@@ -126,17 +126,18 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        {/* Кнопка участия */}
-        {user && !isParticipant && (
-          <form action={`/api/events/${id}/join`} method="post">
-            <button 
-              type="submit"
-              className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition shadow-lg shadow-green-500/30 text-lg"
-            >
-              ⚔️ Участвовать в событии
-            </button>
-          </form>
-        )}
+{/* Кнопка участия */}
+{user && !isParticipant && (
+  <form action="/api/join-event" method="POST">
+    <input type="hidden" name="eventId" value={id} />
+    <button 
+      type="submit"
+      className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition shadow-lg shadow-green-500/30 text-lg"
+    >
+      ⚔️ Участвовать в событии
+    </button>
+  </form>
+)}
 
         {isParticipant && (
           <div className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg text-center text-lg">
