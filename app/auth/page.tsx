@@ -1,6 +1,6 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function AuthPage() {
@@ -12,17 +12,48 @@ export default function AuthPage() {
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [error, setError] = useState('')
+  const characterRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
-    // Динамически загружаем скрипты
-    const script1 = document.createElement('script')
-    script1.src = 'https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js'
-    script1.async = true
-    document.body.appendChild(script1)
+    // Загружаем GSAP для анимации
+    const loadGSAP = async () => {
+      const gsapScript = document.createElement('script')
+      gsapScript.src = 'https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js'
+      gsapScript.async = true
+      gsapScript.onload = () => {
+        if ((window as any).gsap && characterRef.current) {
+          const gsap = (window as any).gsap
+          
+          // Анимация персонажа
+          gsap.to(characterRef.current, {
+            y: -10,
+            duration: 2,
+            repeat: -1,
+            yoyo: true,
+            ease: 'sine.inOut'
+          })
 
-    return () => {
-      document.body.removeChild(script1)
+          // Анимация руки (если есть)
+          const arm = characterRef.current.querySelector('.arm')
+          if (arm) {
+            gsap.to(arm, {
+              rotation: 5,
+              duration: 1.5,
+              repeat: -1,
+              yoyo: true,
+              ease: 'sine.inOut',
+              transformOrigin: 'center center'
+            })
+          }
+        }
+      }
+      document.body.appendChild(gsapScript)
+
+      return () => {
+        document.body.removeChild(gsapScript)
+      }
     }
+    loadGSAP()
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -69,41 +100,77 @@ export default function AuthPage() {
 
       {/* Руны на фоне */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10">
-        <div className="absolute top-20 left-10 text-8xl text-yellow-500/20 animate-spin" style={{ animationDuration: '30s' }}>ᚠ</div>
+        <div className="absolute top-20 left-10 text-8xl text-yellow-500/20 animate-spin" style={{ animationDuration: '30s' }}></div>
         <div className="absolute top-40 right-20 text-7xl text-purple-500/20 animate-spin" style={{ animationDuration: '25s' }}>ᚢ</div>
         <div className="absolute bottom-20 left-1/3 text-9xl text-red-500/20 animate-spin" style={{ animationDuration: '35s' }}></div>
-        <div className="absolute bottom-40 right-10 text-8xl text-emerald-500/20 animate-spin" style={{ animationDuration: '28s' }}>ᚨ</div>
+        <div className="absolute bottom-40 right-10 text-8xl text-emerald-500/20 animate-spin" style={{ animationDuration: '28s' }}></div>
       </div>
 
       {/* Основной контейнер */}
-      <div className="relative z-10 max-w-4xl w-full flex flex-col items-center gap-6">
+      <div className="relative z-10 max-w-5xl w-full flex flex-col md:flex-row items-center gap-8">
         
-        {/* Анимированный SVG */}
-        <div className="w-full max-w-md">
-          <svg viewBox="0 0 600 552" className="w-full h-auto drop-shadow-2xl">
-            {/* Здесь будет анимированное сердце или другой SVG из твоего кода */}
+        {/* Анимированный персонаж слева */}
+        <div className="md:w-1/3 flex justify-center">
+          <svg 
+            ref={characterRef}
+            viewBox="0 0 400 600" 
+            className="w-64 h-auto drop-shadow-2xl"
+            style={{ filter: 'drop-shadow(0 0 20px rgba(168, 85, 247, 0.5))' }}
+          >
             <defs>
-              <linearGradient id="heartGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ef4444" />
-                <stop offset="100%" stopColor="#dc2626" />
+              <linearGradient id="charGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#a855f7" />
+                <stop offset="100%" stopColor="#7c3aed" />
+              </linearGradient>
+              <linearGradient id="armorGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fbbf24" />
+                <stop offset="100%" stopColor="#f59e0b" />
               </linearGradient>
             </defs>
-            <path
-              d="M300 450 C150 350, 50 250, 50 150 C50 80, 100 30, 180 30 C230 30, 270 60, 300 100 C330 60, 370 30, 420 30 C500 30, 550 80, 550 150 C550 250, 450 350, 300 450 Z"
-              fill="url(#heartGradient)"
-              className="animate-pulse"
-            />
-            <text x="300" y="280" textAnchor="middle" fill="white" fontSize="24" fontWeight="bold">
-              Dungeon
-            </text>
-            <text x="300" y="320" textAnchor="middle" fill="white" fontSize="24" fontWeight="bold">
-              Crushers
-            </text>
+
+            {/* Тень */}
+            <ellipse cx="200" cy="580" rx="80" ry="15" fill="rgba(0,0,0,0.3)" />
+
+            {/* Тело персонажа */}
+            <g>
+              {/* Ноги */}
+              <rect x="170" y="400" width="25" height="120" rx="5" fill="url(#charGradient)" />
+              <rect x="205" y="400" width="25" height="120" rx="5" fill="url(#charGradient)" />
+
+              {/* Туловище */}
+              <rect x="150" y="280" width="100" height="130" rx="10" fill="url(#charGradient)" />
+              
+              {/* Броня на груди */}
+              <path d="M160 300 Q200 320 240 300 L240 380 Q200 400 160 380 Z" fill="url(#armorGradient)" />
+
+              {/* Голова */}
+              <circle cx="200" cy="220" r="50" fill="url(#charGradient)" />
+              
+              {/* Лицо */}
+              <circle cx="185" cy="215" r="5" fill="#fbbf24" />
+              <circle cx="215" cy="215" r="5" fill="#fbbf24" />
+              <path d="M190 240 Q200 250 210 240" stroke="#fbbf24" strokeWidth="3" fill="none" />
+
+              {/* Шлем/рога */}
+              <path d="M170 190 L160 160 L180 180 Z" fill="url(#armorGradient)" />
+              <path d="M230 190 L240 160 L220 180 Z" fill="url(#armorGradient)" />
+              <circle cx="200" cy="175" r="8" fill="url(#armorGradient)" />
+
+              {/* Рука держащая форму */}
+              <g className="arm">
+                <rect x="250" y="300" width="20" height="80" rx="5" fill="url(#charGradient)" transform="rotate(20 260 340)" />
+                <circle cx="270" cy="385" r="15" fill="url(#armorGradient)" />
+              </g>
+
+              {/* Меч за спиной */}
+              <rect x="130" y="250" width="10" height="100" rx="2" fill="#94a3b8" transform="rotate(-10 135 300)" />
+              <rect x="125" y="240" width="20" height="15" rx="2" fill="url(#armorGradient)" />
+            </g>
           </svg>
         </div>
 
-        {/* Контейнер с формой */}
-        <div className="w-full max-w-md">
+        {/* Контейнер с формой справа */}
+        <div className="md:w-2/3">
           <div className="bg-black/40 backdrop-blur-xl border-2 border-purple-500/30 rounded-2xl p-8 shadow-2xl">
             <div className="mb-6">
               <h3 className="text-2xl md:text-3xl font-bold text-white mb-2 text-center">
@@ -164,7 +231,7 @@ export default function AuthPage() {
                 disabled={loading}
                 className="w-full py-4 bg-gradient-to-r from-purple-600 to-red-600 hover:from-purple-500 hover:to-red-500 text-white font-bold rounded-lg transition disabled:opacity-50 shadow-lg shadow-purple-500/30"
               >
-                {loading ? 'Загрузка...' : isLogin ? '⚔️ Войти' : ' Зарегистрироваться'}
+                {loading ? 'Загрузка...' : isLogin ? '⚔️ Войти' : '🔥 Зарегистрироваться'}
               </button>
             </form>
 
