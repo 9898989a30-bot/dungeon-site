@@ -1,6 +1,6 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function AuthPage() {
@@ -12,12 +12,6 @@ export default function AuthPage() {
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [error, setError] = useState('')
-  const [showCode, setShowCode] = useState(false)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowCode(true), 300)
-    return () => clearTimeout(timer)
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -53,20 +47,6 @@ export default function AuthPage() {
     setLoading(false)
   }
 
-  const codeLines = [
-    'class DemonAuth {',
-    '  constructor() {',
-    '    this.power = "";',
-    '    this.realm = "Dungeon";',
-    '  }',
-    '  ',
-    '  async login(user) {',
-    '    await this.summon(user);',
-    '    return await this.enterCrush();',
-    '  }',
-    '}'
-  ]
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-950 to-black flex items-center justify-center p-4 relative overflow-hidden">
       {/* Фоновые эффекты */}
@@ -83,46 +63,9 @@ export default function AuthPage() {
         <div className="absolute bottom-40 right-10 text-8xl text-emerald-500/20 animate-spin" style={{ animationDuration: '28s' }}>ᚨ</div>
       </div>
 
-      {/* Основной контейнер */}
-      <div className="relative z-10 max-w-2xl w-full space-y-6">
-        
-        {/* Блок с кодом */}
-        <div 
-          className={`bg-black/60 backdrop-blur-md border border-purple-500/30 rounded-xl p-4 font-mono text-sm transition-all duration-1000 transform ${
-            showCode ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-          }`}
-        >
-          <div className="flex items-center gap-2 mb-3 border-b border-purple-500/20 pb-2">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span className="text-gray-400 text-xs ml-2">auth.js</span>
-          </div>
-          <div className="space-y-1">
-            {codeLines.map((line, index) => (
-              <div
-                key={index}
-                className="text-emerald-400 whitespace-pre"
-                style={{
-                  animation: showCode ? 'slideIn 0.3s ease-out forwards' : 'none',
-                  animationDelay: `${index * 0.1}s`,
-                  opacity: 0,
-                  transform: 'translateX(-20px)'
-                }}
-              >
-                <span className="text-gray-500 select-none">{String(index + 1).padStart(2, '0')} </span>
-                {line}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Блок с формой */}
-        <div 
-          className={`bg-black/40 backdrop-blur-xl border-2 border-purple-500/30 rounded-2xl p-6 md:p-8 shadow-2xl transition-all duration-1000 delay-300 transform ${
-            showCode ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-          }`}
-        >
+      {/* Контейнер с формой */}
+      <div className="relative z-10 max-w-md w-full">
+        <div className="bg-black/40 backdrop-blur-xl border-2 border-purple-500/30 rounded-2xl p-8 shadow-2xl">
           <div className="mb-6">
             <h3 className="text-2xl md:text-3xl font-bold text-white mb-2 text-center">
               ⚔️ {isLogin ? 'Добро пожаловать!' : 'Создать аккаунт'}
@@ -205,19 +148,6 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-      `}</style>
     </div>
   )
 }
