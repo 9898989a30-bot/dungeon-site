@@ -1,17 +1,13 @@
 'use client'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 export default function JoinButton({ eventId }: { eventId: string }) {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   async function handleJoin() {
     setLoading(true)
     
     try {
-      console.log('Отправка запроса на участие, eventId:', eventId)
-      
       const response = await fetch('/api/join-event', {
         method: 'POST',
         headers: {
@@ -20,21 +16,18 @@ export default function JoinButton({ eventId }: { eventId: string }) {
         body: JSON.stringify({ eventId }),
       })
 
-      console.log('Ответ сервера:', response.status)
-      
       const data = await response.json()
-      console.log('Данные ответа:', data)
 
       if (response.ok) {
         alert('✅ Вы успешно зарегистрировались!')
-        // Перезагружаем страницу чтобы обновить данные
+        // Полная перезагрузка страницы, чтобы сервер заново запросил список участников
         window.location.reload()
       } else {
-        alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'))
+        alert('Ошибка: ' + (data.error || 'Не удалось зарегистрироваться'))
       }
     } catch (error) {
       console.error('Ошибка при участии:', error)
-      alert('Произошла ошибка при регистрации. Попробуйте снова.')
+      alert('Произошла ошибка. Попробуйте обновить страницу.')
     } finally {
       setLoading(false)
     }
@@ -44,7 +37,7 @@ export default function JoinButton({ eventId }: { eventId: string }) {
     <button
       onClick={handleJoin}
       disabled={loading}
-      className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition shadow-lg shadow-green-500/30 text-lg disabled:opacity-50"
+      className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition shadow-lg shadow-green-500/30 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {loading ? '⏳ Обработка...' : '⚔️ Участвовать в событии'}
     </button>

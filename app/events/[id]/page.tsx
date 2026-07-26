@@ -8,7 +8,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   
   const supabase = await createClient()
 
-  // Получаем событие
+  // 1. Получаем событие
   const { data: event, error: eventError } = await supabase
     .from('events')
     .select('*')
@@ -19,23 +19,35 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     redirect('/')
   }
 
-  // Получаем призы
+  // 2. Получаем призы
   const { data: rewards } = await supabase
     .from('event_rewards')
     .select('*')
     .eq('event_id', id)
     .order('place', { ascending: true })
 
-  // Получаем участников
-  const { data: participants } = await supabase
+  // 3. Получаем участников с данными профиля (исправленный синтаксис связи)
+  const { data: participants, error: participantsError } = await supabase
     .from('event_participants')
-    .select('*, profiles(username)')
+    .select(`
+      id,
+      user_id,
+      joined_at,
+      profiles:user_id (
+        username
+      )
+    `)
     .eq('event_id', id)
+    .order('joined_at', { ascending: true })
 
-  // Проверяем, вошёл ли пользователь
+  if (participantsError) {
+    console.error('Ошибка загрузки участников:', participantsError)
+  }
+
+  // 4. Проверяем, вошёл ли пользователь
   const { data: { user } } = await supabase.auth.getUser()
   
-  // Проверяем, участвует ли уже
+  // 5. Проверяем, участвует ли уже
   const isParticipant = participants?.some((p: any) => p.user_id === user?.id) || false
 
   return (
@@ -53,7 +65,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         <div className="bg-black/50 border border-purple-500/30 rounded-xl p-8 mb-6">
           <div className="flex items-start gap-4 mb-6">
             <span className="text-5xl">
-              {event.type === 'tournament' ? '⚔️' : ''}
+              {event.type === 'tournament' ? '⚔️' : '🎁'}
             </span>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-white mb-2">
@@ -82,14 +94,12 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {event.max_participants && (
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <p className="text-sm text-blue-400 mb-1">👥 Участники</p>
-                <p className="text-white font-semibold">
-                  {participants?.length || 0} / {event.max_participants}
-                </p>
-              </div>
-            )}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <p className="text-sm text-blue-400 mb-1">👥 Участники</p>
+              <p className="text-white font-semibold">
+                {participants?.length || 0} {event.max_participants ? `/ ${event.max_participants}` : ''}
+              </p>
+            </div>
           </div>
 
           {/* Призы */}
@@ -127,47 +137,55 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        {/* Кнопка участия - client component */}
+        {/* Кнопка участия */}
         {user && !isParticipant ? (
           <JoinButton eventId={id} />
         ) : isParticipant ? (
-          <div className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg text-center text-lg">
+          <div className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg text-center text-lg shadow-lg shadow-blue-500/20">
             ✅ Ты уже участвуешь!
           </div>
         ) : (
           <Link 
             href="/auth"
-            className="block w-full py-4 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white font-bold rounded-lg text-center text-lg transition"
+            className="block w-full py-4 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white font-bold rounded-lg text-center text-lg transition shadow-lg shadow-yellow-500/20"
           >
-             Войди чтобы участвовать
+            🔐 Войди чтобы участвовать
           </Link>
         )}
 
-        {/* Участники */}
+        {/* Список участников */}
         <div className="mt-8">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            👥 Участники ({participants?.length || 0})
+            👥 Список участников ({participants?.length || 0})
           </h2>
           
           {participants && participants.length > 0 ? (
             <div className="space-y-2">
-              {participants.map((participant: any, index: number) => (
-                <div 
-                  key={participant.id}
-                  className="bg-black/40 border border-purple-500/20 rounded-lg p-4 flex items-center gap-3"
-                >
-                  <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300">
-                    {index + 1}
+              {participants.map((participant: any, index: number) => {
+                // Безопасное получение имени
+                const username = participant.profiles?.username || 'Аноним'
+                return (
+                  <div 
+                    key={participant.id}
+                    className="bg-black/40 border border-purple-500/20 rounded-lg p-4 flex items-center gap-3 hover:bg-purple-500/5 transition"
+                  >
+                    <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300">
+                      {index + 1}
+                    </div>
+                    <span className="text-white font-semibold">
+                      {username}
+                    </span>
+                    <span className="ml-auto text-xs text-gray-500">
+                      {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
+                    </span>
                   </div>
-                  <span className="text-white font-semibold">
-                    {participant.profiles?.username || participant.user_id}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 bg-black/20 rounded-xl border border-dashed border-gray-700">
               <p className="text-lg">Пока никто не зарегистрировался</p>
+              <p className="text-sm mt-1">Будь первым!</p>
             </div>
           )}
         </div>
