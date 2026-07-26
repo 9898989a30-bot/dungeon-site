@@ -3,11 +3,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 
 export async function POST(request: NextRequest) {
-  const formData = await request.formData()
-  const eventId = formData.get('eventId') as string
+  const body = await request.json()
+  const eventId = body.eventId
 
   if (!eventId) {
-    return NextResponse.redirect(new URL(`/events/${eventId}`, request.url))
+    return NextResponse.json({ error: 'Нет ID события' }, { status: 400 })
   }
 
   const supabase = await createClient()
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
-    return NextResponse.redirect(new URL('/auth', request.url))
+    return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
   }
 
   // Проверяем событие
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (eventError || !event) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return NextResponse.json({ error: 'Событие не найдено' }, { status: 404 })
   }
 
   // Проверяем, не участвует ли уже
@@ -39,8 +39,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (existingParticipant) {
-    revalidatePath(`/events/${eventId}`)
-    return NextResponse.redirect(new URL(`/events/${eventId}`, request.url))
+    return NextResponse.json({ error: 'Вы уже участвуете' }, { status: 400 })
   }
 
   // Проверяем количество участников
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
     .eq('event_id', eventId)
 
   if (event.max_participants && count !== null && count >= event.max_participants) {
-    return NextResponse.redirect(new URL(`/events/${eventId}`, request.url))
+    return NextResponse.json({ error: 'Достигнуто максимальное количество участников' }, { status: 400 })
   }
 
   // Добавляем участника
@@ -63,10 +62,11 @@ export async function POST(request: NextRequest) {
     })
 
   if (insertError) {
-    return NextResponse.redirect(new URL(`/events/${eventId}`, request.url))
+    return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
-  // Обновляем кэш и перенаправляем
+  // Обновляем кэш
   revalidatePath(`/events/${eventId}`)
-  return NextResponse.redirect(new URL(`/events/${eventId}`, request.url))
+  
+  return NextResponse.json({ success: true })
 }

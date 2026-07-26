@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import JoinButton from './JoinButton'
 
 export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -126,26 +127,14 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-{/* Кнопка участия */}
-{user && !isParticipant && (
-  <form action="/api/join-event" method="POST">
-    <input type="hidden" name="eventId" value={id} />
-    <button 
-      type="submit"
-      className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition shadow-lg shadow-green-500/30 text-lg"
-    >
-      ⚔️ Участвовать в событии
-    </button>
-  </form>
-)}
-
-        {isParticipant && (
+        {/* Кнопка участия - client component */}
+        {user && !isParticipant ? (
+          <JoinButton eventId={id} />
+        ) : isParticipant ? (
           <div className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg text-center text-lg">
             ✅ Ты уже участвуешь!
           </div>
-        )}
-
-        {!user && (
+        ) : (
           <Link 
             href="/auth"
             className="block w-full py-4 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white font-bold rounded-lg text-center text-lg transition"
