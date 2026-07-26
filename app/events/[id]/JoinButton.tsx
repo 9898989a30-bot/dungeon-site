@@ -10,6 +10,8 @@ export default function JoinButton({ eventId }: { eventId: string }) {
     setLoading(true)
     
     try {
+      console.log('Отправка запроса на участие, eventId:', eventId)
+      
       const response = await fetch('/api/join-event', {
         method: 'POST',
         headers: {
@@ -18,15 +20,21 @@ export default function JoinButton({ eventId }: { eventId: string }) {
         body: JSON.stringify({ eventId }),
       })
 
+      console.log('Ответ сервера:', response.status)
+      
+      const data = await response.json()
+      console.log('Данные ответа:', data)
+
       if (response.ok) {
+        alert('✅ Вы успешно зарегистрировались!')
         // Перезагружаем страницу чтобы обновить данные
-        router.refresh()
+        window.location.reload()
       } else {
-        const error = await response.json()
-        alert('Ошибка: ' + error.error)
+        alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'))
       }
     } catch (error) {
-      alert('Ошибка при участии')
+      console.error('Ошибка при участии:', error)
+      alert('Произошла ошибка при регистрации. Попробуйте снова.')
     } finally {
       setLoading(false)
     }
