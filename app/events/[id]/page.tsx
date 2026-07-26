@@ -2,17 +2,19 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
-export default async function EventPage({ params }: { params: { id: string } }) {
+export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  
   const supabase = await createClient()
 
   // Получаем событие
-  const { data: event } = await supabase
+  const { data: event, error: eventError } = await supabase
     .from('events')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
-  if (!event) {
+  if (eventError || !event) {
     redirect('/')
   }
 
@@ -20,20 +22,20 @@ export default async function EventPage({ params }: { params: { id: string } }) 
   const { data: rewards } = await supabase
     .from('event_rewards')
     .select('*')
-    .eq('event_id', params.id)
+    .eq('event_id', id)
     .order('place', { ascending: true })
 
   // Получаем участников
   const { data: participants } = await supabase
     .from('event_participants')
     .select('*, profiles(username)')
-    .eq('event_id', params.id)
+    .eq('event_id', id)
 
   // Проверяем, вошёл ли пользователь
   const { data: { user } } = await supabase.auth.getUser()
   
   // Проверяем, участвует ли уже
-  const isParticipant = participants?.some(p => p.user_id === user?.id) || false
+  const isParticipant = participants?.some((p: any) => p.user_id === user?.id) || false
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white p-6">
@@ -50,7 +52,7 @@ export default async function EventPage({ params }: { params: { id: string } }) 
         <div className="bg-black/50 border border-purple-500/30 rounded-xl p-8 mb-6">
           <div className="flex items-start gap-4 mb-6">
             <span className="text-5xl">
-              {event.type === 'tournament' ? '⚔️' : '🎁'}
+              {event.type === 'tournament' ? '⚔️' : ''}
             </span>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-white mb-2">
@@ -115,7 +117,7 @@ export default async function EventPage({ params }: { params: { id: string } }) 
                       )}
                     </div>
                     <div className="text-3xl">
-                      {reward.place === 1 ? '🥇' : reward.place === 2 ? '🥈' : reward.place === 3 ? '🥉' : ''}
+                      {reward.place === 1 ? '🥇' : reward.place === 2 ? '🥈' : reward.place === 3 ? '🥉' : '🏅'}
                     </div>
                   </div>
                 ))}
@@ -126,12 +128,12 @@ export default async function EventPage({ params }: { params: { id: string } }) 
 
         {/* Кнопка участия */}
         {user && !isParticipant && (
-          <form action={`/api/events/${params.id}/join`} method="post">
+          <form action={`/api/events/${id}/join`} method="post">
             <button 
               type="submit"
               className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold rounded-lg transition shadow-lg shadow-green-500/30 text-lg"
             >
-              ️ Участвовать в событии
+              ⚔️ Участвовать в событии
             </button>
           </form>
         )}
@@ -147,7 +149,7 @@ export default async function EventPage({ params }: { params: { id: string } }) 
             href="/auth"
             className="block w-full py-4 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white font-bold rounded-lg text-center text-lg transition"
           >
-            🔐 Войди чтобы участвовать
+             Войди чтобы участвовать
           </Link>
         )}
 
