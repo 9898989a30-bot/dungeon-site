@@ -8,11 +8,9 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
   const { id } = await params
   const supabase = await createClient()
 
-  // Проверяем авторизацию
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth')
 
-  // Получаем событие
   const { data: event } = await supabase
     .from('events')
     .select('*')
@@ -21,14 +19,12 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
 
   if (!event) redirect('/admin')
 
-  // Получаем призы
   const { data: rewards } = await supabase
     .from('event_rewards')
     .select('*')
     .eq('event_id', id)
     .order('place', { ascending: true })
 
-  // Получаем участников (без профилей)
   const { data: participants } = await supabase
     .from('event_participants')
     .select('id, user_id, joined_at')
@@ -44,7 +40,6 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Информация о событии */}
           <div className="bg-black/50 border border-purple-500/30 rounded-xl p-6">
             <h2 className="text-2xl font-bold text-white mb-2">{event.title}</h2>
             <p className="text-gray-400 mb-4">{event.description}</p>
@@ -62,7 +57,6 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
               </p>
             </div>
 
-            {/* Призы */}
             {rewards && rewards.length > 0 && (
               <div className="mt-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
                 <h3 className="text-lg font-bold text-yellow-400 mb-2">🏆 Призы:</h3>
@@ -76,41 +70,16 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
               </div>
             )}
 
-            {/* Кнопки управления */}
-            <div className="mt-6 space-y-2">
+            <div className="mt-6">
               <Link
                 href={`/admin/events/${id}/edit`}
                 className="block w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-center transition"
               >
-                ✏️ Редактировать
+                ️ Редактировать
               </Link>
-              
-              {/* КНОПКА РОЗЫГРЫША */}
-              {participants && participants.length > 0 && event.status !== 'completed' && (
-                <form action={`/api/admin/events/${id}/raffle`} method="POST">
-                  <button 
-                    type="submit"
-                    className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition shadow-lg shadow-yellow-500/30"
-                    onClick={(e) => {
-                      if (!confirm('⚠️ Провести розыгрыш среди участников?')) {
-                        e.preventDefault()
-                      }
-                    }}
-                  >
-                     Разыграть призы
-                  </button>
-                </form>
-              )}
-              
-              {event.status === 'completed' && (
-                <div className="w-full py-3 bg-gray-700 text-gray-300 font-bold rounded-lg text-center border border-gray-600">
-                  ✅ Розыгрыш уже проведён
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Список участников */}
           <div className="bg-black/50 border border-purple-500/30 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
               👥 Участники ({participants?.length || 0})
@@ -130,16 +99,13 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                       <p className="text-white font-semibold truncate">
                         {participant.user_id.slice(0, 8)}...
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
-                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-12 text-gray-500 bg-black/20 rounded-xl border border-dashed border-gray-700">
-                <p className="text-lg">Нет участников</p>
+                <p>Нет участников</p>
               </div>
             )}
           </div>
