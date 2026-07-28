@@ -18,16 +18,21 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
     .eq('id', user.id)
     .single()
 
-  if (!profile?.is_admin) redirect('/')
+  if (!profile?.is_admin) {
+    redirect('/')
+  }
 
   // Получаем событие
-  const { data: event } = await supabase
+  const { data: event, error: eventError } = await supabase
     .from('events')
     .select('*')
     .eq('id', id)
     .single()
 
-  if (!event) redirect('/admin')
+  if (eventError || !event) {
+    console.error('Ошибка загрузки события:', eventError)
+    redirect('/admin')
+  }
 
   // Получаем призы
   const { data: rewards } = await supabase
@@ -37,11 +42,15 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
     .order('place', { ascending: true })
 
   // Получаем участников
-  const { data: participants } = await supabase
+  const { data: participants, error: participantsError } = await supabase
     .from('event_participants')
     .select('id, user_id, joined_at')
     .eq('event_id', id)
     .order('joined_at', { ascending: true })
+
+  if (participantsError) {
+    console.error('Ошибка загрузки участников:', participantsError)
+  }
 
   // Получаем ники участников
   let usernames: Record<string, string> = {}
@@ -100,17 +109,6 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
               >
                 ✏️ Редактировать
               </Link>
-              <form action={`/api/admin/events/${id}/delete`} method="POST">
-                <button 
-                  type="submit"
-                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition"
-                  onClick={(e) => {
-                    if (!confirm('Точно удалить событие?')) e.preventDefault()
-                  }}
-                >
-                  🗑 Удалить событие
-                </button>
-              </form>
             </div>
           </div>
 
@@ -127,7 +125,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                   return (
                     <div 
                       key={participant.id}
-                      className="bg-black/40 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3 hover:border-yellow-400/50 transition"
+                      className="bg-black/40 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3"
                     >
                       <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300 flex-shrink-0">
                         {index + 1}
@@ -135,7 +133,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                       <div className="flex-1 min-w-0">
                         <p className="text-white font-semibold truncate">{displayName}</p>
                         <p className="text-xs text-gray-500">
-                          {new Date(participant.joined_at).toLocaleString('ru-RU')}
+                          {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
                         </p>
                       </div>
                     </div>
@@ -146,18 +144,6 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
               <div className="text-center py-12 text-gray-500 bg-black/20 rounded-xl border border-dashed border-gray-700">
                 <p className="text-lg">Нет участников</p>
                 <p className="text-sm mt-1">Пока никто не зарегистрировался</p>
-              </div>
-            )}
-
-            {/* Кнопка розыгрыша (если есть участники) */}
-            {participants && participants.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-gray-700">
-                <button
-                  className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition shadow-lg shadow-yellow-500/30"
-                  onClick={() => alert('Розыгрыш будет реализован позже!')}
-                >
-                  🎲 Провести розыгрыш
-                </button>
               </div>
             )}
           </div>
