@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import RaffleButton from './RaffleButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,26 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
     .select('id, user_id, joined_at')
     .eq('event_id', id)
     .order('joined_at', { ascending: true })
+
+  // Получаем ники участников
+  let usernames: Record<string, string> = {}
+  if (participants && participants.length > 0) {
+    const userIds = participants.map((p: any) => p.user_id)
+    try {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds)
+      
+      if (profiles) {
+        profiles.forEach((p: any) => {
+          usernames[p.id] = p.username || 'Аноним'
+        })
+      }
+    } catch (error) {
+      console.error('Ошибка получения профилей:', error)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white p-6">
@@ -70,13 +91,20 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
               </div>
             )}
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-2">
               <Link
                 href={`/admin/events/${id}/edit`}
                 className="block w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-center transition"
               >
                 ️ Редактировать
               </Link>
+              
+              {/* Кнопка розыгрыша через клиентский компонент */}
+              <RaffleButton 
+                eventId={id}
+                hasParticipants={!!(participants && participants.length > 0)}
+                status={event.status}
+              />
             </div>
           </div>
 
@@ -87,21 +115,25 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
 
             {participants && participants.length > 0 ? (
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                {participants.map((participant: any, index: number) => (
-                  <div 
-                    key={participant.id}
-                    className="bg-black/40 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3"
-                  >
-                    <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300 flex-shrink-0">
-                      {index + 1}
+                {participants.map((participant: any, index: number) => {
+                  const displayName = usernames[participant.user_id] || participant.user_id.slice(0, 8) + '...'
+                  return (
+                    <div 
+                      key={participant.id}
+                      className="bg-black/40 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3"
+                    >
+                      <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300 flex-shrink-0">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold truncate">{displayName}</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold truncate">
-                        {participant.user_id.slice(0, 8)}...
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="text-center py-12 text-gray-500 bg-black/20 rounded-xl border border-dashed border-gray-700">
