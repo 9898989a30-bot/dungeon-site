@@ -8,17 +8,28 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
   const { id } = await params
   const supabase = await createClient()
 
-  // Проверяем, что пользователь — админ
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth')
+  // Проверяем авторизацию
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  
+  if (authError || !user) {
+    console.error('Ошибка авторизации:', authError)
+    redirect('/auth')
+  }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
+  // Проверяем, что пользователь — админ (безопасная проверка)
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
 
-  if (!profile?.is_admin) {
+    if (profileError || !profile?.is_admin) {
+      console.error('Пользователь не админ:', profileError)
+      redirect('/')
+    }
+  } catch (error) {
+    console.error('Ошибка проверки админа:', error)
     redirect('/')
   }
 
@@ -55,16 +66,20 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
   // Получаем ники участников
   let usernames: Record<string, string> = {}
   if (participants && participants.length > 0) {
-    const userIds = participants.map((p: any) => p.user_id)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', userIds)
-    
-    if (profiles) {
-      profiles.forEach((p: any) => {
-        usernames[p.id] = p.username || 'Аноним'
-      })
+    try {
+      const userIds = participants.map((p: any) => p.user_id)
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds)
+      
+      if (profiles) {
+        profiles.forEach((p: any) => {
+          usernames[p.id] = p.username || 'Аноним'
+        })
+      }
+    } catch (error) {
+      console.error('Ошибка получения профилей:', error)
     }
   }
 
@@ -118,7 +133,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                 href={`/admin/events/${id}/edit`}
                 className="block w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-center transition"
               >
-                ️ Редактировать
+                ✏️ Редактировать
               </Link>
               
               {/* КНОПКА РОЗЫГРЫША */}
@@ -128,12 +143,12 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                     type="submit"
                     className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition shadow-lg shadow-yellow-500/30"
                     onClick={(e) => {
-                      if (!confirm('️ Провести розыгрыш среди участников? Это действие нельзя отменить!')) {
+                      if (!confirm('⚠️ Провести розыгрыш среди участников? Это действие нельзя отменить!')) {
                         e.preventDefault()
                       }
                     }}
                   >
-                     Разыграть призы
+                    🎲 Разыграть призы
                   </button>
                 </form>
               )}
