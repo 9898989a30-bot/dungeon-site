@@ -9,41 +9,17 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
   const supabase = await createClient()
 
   // Проверяем авторизацию
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (authError || !user) {
-    console.error('Ошибка авторизации:', authError)
-    redirect('/auth')
-  }
-
-  // Проверяем, что пользователь — админ (безопасная проверка)
-  try {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError || !profile?.is_admin) {
-      console.error('Пользователь не админ:', profileError)
-      redirect('/')
-    }
-  } catch (error) {
-    console.error('Ошибка проверки админа:', error)
-    redirect('/')
-  }
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth')
 
   // Получаем событие
-  const { data: event, error: eventError } = await supabase
+  const { data: event } = await supabase
     .from('events')
     .select('*')
     .eq('id', id)
     .single()
 
-  if (eventError || !event) {
-    console.error('Ошибка загрузки события:', eventError)
-    redirect('/admin')
-  }
+  if (!event) redirect('/admin')
 
   // Получаем призы
   const { data: rewards } = await supabase
@@ -52,36 +28,12 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
     .eq('event_id', id)
     .order('place', { ascending: true })
 
-  // Получаем участников
-  const { data: participants, error: participantsError } = await supabase
+  // Получаем участников (без профилей)
+  const { data: participants } = await supabase
     .from('event_participants')
     .select('id, user_id, joined_at')
     .eq('event_id', id)
     .order('joined_at', { ascending: true })
-
-  if (participantsError) {
-    console.error('Ошибка загрузки участников:', participantsError)
-  }
-
-  // Получаем ники участников
-  let usernames: Record<string, string> = {}
-  if (participants && participants.length > 0) {
-    try {
-      const userIds = participants.map((p: any) => p.user_id)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', userIds)
-      
-      if (profiles) {
-        profiles.forEach((p: any) => {
-          usernames[p.id] = p.username || 'Аноним'
-        })
-      }
-    } catch (error) {
-      console.error('Ошибка получения профилей:', error)
-    }
-  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white p-6">
@@ -100,14 +52,12 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
             <div className="space-y-2 text-sm">
               <p>
                 <span className="text-gray-400">Статус:</span>{' '}
-                <span className={event.status === 'completed' ? 'text-red-400' : 'text-green-400'}>
-                  {event.status === 'completed' ? 'Завершено' : (event.status || 'Регистрация')}
-                </span>
+                <span className="text-green-400">{event.status || 'Регистрация'}</span>
               </p>
               <p>
                 <span className="text-gray-400">Участников:</span>{' '}
                 <span className="text-white font-bold">
-                  {participants?.length || 0} / {event.max_participants || '∞'}
+                  {participants?.length || 0} / {event.max_participants || ''}
                 </span>
               </p>
             </div>
@@ -119,8 +69,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                 <div className="space-y-1">
                   {rewards.map((r: any) => (
                     <p key={r.id} className="text-sm text-white">
-                      <span className="text-yellow-400 font-bold">#{r.place}:</span> {r.reward_name}{' '}
-                      {r.reward_description && <span className="text-gray-400">({r.reward_description})</span>}
+                      <span className="text-yellow-400 font-bold">#{r.place}:</span> {r.reward_name}
                     </p>
                   ))}
                 </div>
@@ -143,12 +92,12 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                     type="submit"
                     className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition shadow-lg shadow-yellow-500/30"
                     onClick={(e) => {
-                      if (!confirm('⚠️ Провести розыгрыш среди участников? Это действие нельзя отменить!')) {
+                      if (!confirm('⚠️ Провести розыгрыш среди участников?')) {
                         e.preventDefault()
                       }
                     }}
                   >
-                    🎲 Разыграть призы
+                     Разыграть призы
                   </button>
                 </form>
               )}
@@ -169,30 +118,28 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
 
             {participants && participants.length > 0 ? (
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                {participants.map((participant: any, index: number) => {
-                  const displayName = usernames[participant.user_id] || participant.user_id.slice(0, 8) + '...'
-                  return (
-                    <div 
-                      key={participant.id}
-                      className="bg-black/40 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3"
-                    >
-                      <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300 flex-shrink-0">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-semibold truncate">{displayName}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
-                        </p>
-                      </div>
+                {participants.map((participant: any, index: number) => (
+                  <div 
+                    key={participant.id}
+                    className="bg-black/40 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3"
+                  >
+                    <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300 flex-shrink-0">
+                      {index + 1}
                     </div>
-                  )
-                })}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold truncate">
+                        {participant.user_id.slice(0, 8)}...
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-center py-12 text-gray-500 bg-black/20 rounded-xl border border-dashed border-gray-700">
                 <p className="text-lg">Нет участников</p>
-                <p className="text-sm mt-1">Пока никто не зарегистрировался</p>
               </div>
             )}
           </div>
