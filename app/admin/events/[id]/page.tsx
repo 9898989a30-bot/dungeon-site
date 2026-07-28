@@ -83,8 +83,18 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
             <p className="text-gray-400 mb-4">{event.description}</p>
 
             <div className="space-y-2 text-sm">
-              <p><span className="text-gray-400">Статус:</span> <span className="text-green-400">{event.status || 'registration'}</span></p>
-              <p><span className="text-gray-400">Участников:</span> <span className="text-white font-bold">{participants?.length || 0} / {event.max_participants || '∞'}</span></p>
+              <p>
+                <span className="text-gray-400">Статус:</span>{' '}
+                <span className={event.status === 'completed' ? 'text-red-400' : 'text-green-400'}>
+                  {event.status === 'completed' ? 'Завершено' : (event.status || 'Регистрация')}
+                </span>
+              </p>
+              <p>
+                <span className="text-gray-400">Участников:</span>{' '}
+                <span className="text-white font-bold">
+                  {participants?.length || 0} / {event.max_participants || '∞'}
+                </span>
+              </p>
             </div>
 
             {/* Призы */}
@@ -94,7 +104,8 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                 <div className="space-y-1">
                   {rewards.map((r: any) => (
                     <p key={r.id} className="text-sm text-white">
-                      <span className="text-yellow-400 font-bold">#{r.place}:</span> {r.reward_name} {r.reward_description && <span className="text-gray-400">({r.reward_description})</span>}
+                      <span className="text-yellow-400 font-bold">#{r.place}:</span> {r.reward_name}{' '}
+                      {r.reward_description && <span className="text-gray-400">({r.reward_description})</span>}
                     </p>
                   ))}
                 </div>
@@ -107,8 +118,31 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                 href={`/admin/events/${id}/edit`}
                 className="block w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-center transition"
               >
-                ✏️ Редактировать
+                ️ Редактировать
               </Link>
+              
+              {/* КНОПКА РОЗЫГРЫША */}
+              {participants && participants.length > 0 && event.status !== 'completed' && (
+                <form action={`/api/admin/events/${id}/raffle`} method="POST">
+                  <button 
+                    type="submit"
+                    className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition shadow-lg shadow-yellow-500/30"
+                    onClick={(e) => {
+                      if (!confirm('️ Провести розыгрыш среди участников? Это действие нельзя отменить!')) {
+                        e.preventDefault()
+                      }
+                    }}
+                  >
+                     Разыграть призы
+                  </button>
+                </form>
+              )}
+              
+              {event.status === 'completed' && (
+                <div className="w-full py-3 bg-gray-700 text-gray-300 font-bold rounded-lg text-center border border-gray-600">
+                  ✅ Розыгрыш уже проведён
+                </div>
+              )}
             </div>
           </div>
 
@@ -119,7 +153,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
             </h2>
 
             {participants && participants.length > 0 ? (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
                 {participants.map((participant: any, index: number) => {
                   const displayName = usernames[participant.user_id] || participant.user_id.slice(0, 8) + '...'
                   return (
