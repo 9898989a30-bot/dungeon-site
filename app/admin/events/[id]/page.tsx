@@ -55,7 +55,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-yellow-400">👑 Админка события</h1>
+          <h1 className="text-3xl font-bold text-yellow-400"> Админка события</h1>
           <Link href="/admin" className="text-yellow-400 hover:text-yellow-300">← Назад в админку</Link>
         </div>
 
@@ -81,7 +81,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
 
             {rewards && rewards.length > 0 && (
               <div className="mt-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <h3 className="text-lg font-bold text-yellow-400 mb-2">🏆 Призы:</h3>
+                <h3 className="text-lg font-bold text-yellow-400 mb-2"> Призы:</h3>
                 <div className="space-y-1">
                   {rewards.map((r: any) => (
                     <p key={r.id} className="text-sm text-white">
@@ -97,36 +97,24 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                 href={`/admin/events/${id}/edit`}
                 className="block w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-center transition"
               >
-                ️ Редактировать
+                ✏️ Редактировать
               </Link>
               
-              {/* КНОПКА РОЗЫГРЫША */}
+              {/* КНОПКА РОЗЫГРЫША - через форму */}
               {participants && participants.length > 0 && event.status !== 'completed' && (
-                <button
-                  onClick={async () => {
-                    if (!confirm('⚠️ Провести розыгрыш среди участников?')) return
-                    
-                    try {
-                      const response = await fetch(`/api/admin/events/${id}/raffle`, {
-                        method: 'POST',
-                      })
-                      
-                      const data = await response.json()
-                      
-                      if (response.ok) {
-                        alert(`✅ Розыгрыш проведён! Победителей: ${data.count || 0}`)
-                        window.location.reload()
-                      } else {
-                        alert('Ошибка: ' + (data.error || 'Не удалось провести розыгрыш'))
+                <form action={`/api/admin/events/${id}/raffle`} method="POST">
+                  <button 
+                    type="submit"
+                    className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition shadow-lg shadow-yellow-500/30"
+                    onClick={(e) => {
+                      if (!confirm('⚠️ Провести розыгрыш среди участников?')) {
+                        e.preventDefault()
                       }
-                    } catch (error) {
-                      alert('Произошла ошибка')
-                    }
-                  }}
-                  className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition shadow-lg shadow-yellow-500/30"
-                >
-                   Разыграть призы
-                </button>
+                    }}
+                  >
+                    🎲 Разыграть призы
+                  </button>
+                </form>
               )}
               
               {event.status === 'completed' && (
