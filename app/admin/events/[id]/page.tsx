@@ -31,32 +31,11 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
     .eq('event_id', id)
     .order('joined_at', { ascending: true })
 
-  // Получаем ники участников
-  let usernames: Record<string, string> = {}
-  if (participants && participants.length > 0) {
-    const userIds = participants.map((p: any) => p.user_id)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', userIds)
-    
-    if (profiles) {
-      profiles.forEach((p: any) => {
-        usernames[p.id] = p.username || 'Аноним'
-      })
-    }
-  }
-
-  const participantsWithNames = participants?.map(p => ({
-    ...p,
-    username: usernames[p.user_id] || p.user_id.slice(0, 8) + '...'
-  })) || []
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-yellow-400">👑 Админка события</h1>
+          <h1 className="text-3xl font-bold text-yellow-400"> Админка события</h1>
           <Link href="/admin" className="text-yellow-400 hover:text-yellow-300">← Назад в админку</Link>
         </div>
 
@@ -82,7 +61,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
 
             {rewards && rewards.length > 0 && (
               <div className="mt-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <h3 className="text-lg font-bold text-yellow-400 mb-2">🏆 Призы:</h3>
+                <h3 className="text-lg font-bold text-yellow-400 mb-2"> Призы:</h3>
                 <div className="space-y-1">
                   {rewards.map((r: any) => (
                     <p key={r.id} className="text-sm text-white">
@@ -99,7 +78,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                 href={`/admin/events/${id}/edit`}
                 className="block w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-center transition"
               >
-                ✏️ Редактировать
+                ️ Редактировать
               </Link>
               
               {participants && participants.length > 0 && event.status !== 'completed' && (
@@ -131,9 +110,9 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
               👥 Участники ({participants?.length || 0})
             </h2>
 
-            {participantsWithNames.length > 0 ? (
+            {participants && participants.length > 0 ? (
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                {participantsWithNames.map((participant: any, index: number) => (
+                {participants.map((participant: any, index: number) => (
                   <div 
                     key={participant.id}
                     className="bg-black/40 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3"
@@ -143,7 +122,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold truncate">
-                        {participant.username}
+                        {participant.user_id.slice(0, 8)}...
                       </p>
                       <p className="text-xs text-gray-500">
                         {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
