@@ -10,13 +10,11 @@ export async function POST(
     const { id } = await params
     const supabase = await createClient()
 
-    // Проверяем авторизацию
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    // Проверяем админа
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_admin')
@@ -27,7 +25,6 @@ export async function POST(
       return NextResponse.json({ error: 'Нет прав' }, { status: 403 })
     }
 
-    // Получаем событие
     const { data: event } = await supabase
       .from('events')
       .select('*')
@@ -42,7 +39,6 @@ export async function POST(
       return NextResponse.json({ error: 'Розыгрыш уже проведён' }, { status: 400 })
     }
 
-    // Получаем участников
     const { data: participants } = await supabase
       .from('event_participants')
       .select('id, user_id')
@@ -52,7 +48,6 @@ export async function POST(
       return NextResponse.json({ error: 'Нет участников' }, { status: 400 })
     }
 
-    // Получаем призы
     const { data: rewards } = await supabase
       .from('event_rewards')
       .select('*')
@@ -63,10 +58,9 @@ export async function POST(
       return NextResponse.json({ error: 'Нет призов' }, { status: 400 })
     }
 
-    // 🎲 РАНДОМНО перемешиваем участников
+    //  РАНДОМ
     const shuffled = [...participants].sort(() => Math.random() - 0.5)
 
-    // Назначаем победителей по местам
     const winners = []
     for (let i = 0; i < rewards.length && i < shuffled.length; i++) {
       winners.push({
@@ -78,17 +72,14 @@ export async function POST(
       })
     }
 
-    // Сохраняем победителей
     const { error: insertError } = await supabase
       .from('event_winners')
       .insert(winners)
 
     if (insertError) {
-      console.error('Ошибка сохранения:', insertError)
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
-    // Обновляем статус события
     await supabase
       .from('events')
       .update({ status: 'completed' })
@@ -97,14 +88,19 @@ export async function POST(
     revalidatePath(`/events/${id}`)
     revalidatePath(`/admin/events/${id}`)
     
+    // Возвращаем ID победителей по порядку мест
+    const winnerIds = winners
+      .sort((a, b) => a.place - b.place)
+      .map(w => w.user_id)
+    
     return NextResponse.json({ 
       success: true, 
-      winners: winners.length,
-      message: `Розыгрыш проведён! Победителей: ${winners.length}`
+      winners: winnerIds,
+      count: winners.length
     })
     
   } catch (error) {
-    console.error('Ошибка в API:', error)
+    console.error('Ошибка:', error)
     return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }
