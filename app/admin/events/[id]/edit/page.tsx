@@ -1,23 +1,8 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-
-const POPULAR_REWARDS = [
-  'Легенда Подземелья',
-  'Чемпион Арены',
-  'Покоритель Бездны',
-  'Хранитель Реликвий',
-  'Герой Гильдии',
-  'Мастер Рейдов',
-  'Коллекционер Кристаллов',
-  '500 кристаллов',
-  '1000 кристаллов',
-  'Уникальный аватар',
-  'Золотая рамка',
-  'Титул "Победитель"',
-]
 
 interface Reward {
   id?: string
@@ -26,11 +11,10 @@ interface Reward {
   reward_description: string
 }
 
-export default function EditEventPage() {
+export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
+  const [eventId, setEventId] = useState<string>('')
   const supabase = createClient()
   const router = useRouter()
-  const params = useParams()
-  const eventId = params.id as string
 
   const [loading, setLoading] = useState(false)
   const [type, setType] = useState('giveaway')
@@ -38,17 +22,22 @@ export default function EditEventPage() {
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
   const [maxParticipants, setMaxParticipants] = useState('')
-  const [rewards, setRewards] = useState<Reward[]>([])
+  const [rewards, setRewards] = useState<Reward[]>([
+    { place: 1, reward_name: '', reward_description: '' }
+  ])
 
   useEffect(() => {
-    loadEvent()
-  }, [eventId])
+    params.then(p => {
+      setEventId(p.id)
+      loadEvent(p.id)
+    })
+  }, [params])
 
-  async function loadEvent() {
+  async function loadEvent(id: string) {
     const { data: event } = await supabase
       .from('events')
       .select('*')
-      .eq('id', eventId)
+      .eq('id', id)
       .single()
 
     if (event) {
@@ -61,7 +50,7 @@ export default function EditEventPage() {
       const { data: rewardsData } = await supabase
         .from('event_rewards')
         .select('*')
-        .eq('event_id', eventId)
+        .eq('event_id', id)
         .order('place', { ascending: true })
 
       if (rewardsData && rewardsData.length > 0) {
@@ -77,6 +66,10 @@ export default function EditEventPage() {
   }
 
   function removeReward(index: number) {
+    if (rewards.length <= 1) {
+      alert('Должно быть хотя бы одно призовое место')
+      return
+    }
     const newRewards = rewards.filter((_, i) => i !== index)
     setRewards(newRewards.map((r, i) => ({ ...r, place: i + 1 })))
   }
@@ -123,7 +116,7 @@ export default function EditEventPage() {
     }
 
     alert('✅ Событие обновлено!')
-    router.push('/admin')
+    router.push(`/admin/events/${eventId}`)
     setLoading(false)
   }
 
@@ -131,8 +124,8 @@ export default function EditEventPage() {
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-yellow-400">️ Редактировать событие</h1>
-          <Link href="/admin" className="text-yellow-400 hover:text-yellow-300">← Назад</Link>
+          <h1 className="text-3xl font-bold text-yellow-400">✏️ Редактировать событие</h1>
+          <Link href={`/admin/events/${eventId}`} className="text-yellow-400 hover:text-yellow-300">← Назад</Link>
         </div>
 
         <div className="bg-black/50 border border-purple-500/30 rounded-xl p-6">
@@ -143,7 +136,7 @@ export default function EditEventPage() {
                 <select 
                   value={type} 
                   onChange={e => setType(e.target.value)}
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg"
                 >
                   <option value="giveaway">🎁 Розыгрыш</option>
                   <option value="tournament">⚔️ Турнир</option>
@@ -156,7 +149,7 @@ export default function EditEventPage() {
                   value={title} 
                   onChange={e => setTitle(e.target.value)}
                   required
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg"
                 />
               </div>
             </div>
@@ -168,7 +161,7 @@ export default function EditEventPage() {
                 onChange={e => setDescription(e.target.value)}
                 required
                 rows={3}
-                className="w-full p-3 bg-gray-800 border border-gray-700 rounded"
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg"
               />
             </div>
 
@@ -179,7 +172,7 @@ export default function EditEventPage() {
                   type="datetime-local" 
                   value={startDate} 
                   onChange={e => setStartDate(e.target.value)}
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg"
                 />
               </div>
               <div>
@@ -188,18 +181,19 @@ export default function EditEventPage() {
                   type="number" 
                   value={maxParticipants} 
                   onChange={e => setMaxParticipants(e.target.value)}
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg"
                 />
               </div>
             </div>
 
+            {/* Призовые места */}
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm text-gray-400">🏆 Призовые места</label>
+              <div className="flex justify-between items-center mb-4">
+                <label className="block text-lg font-bold text-yellow-400">🏆 Призовые места</label>
                 <button 
                   type="button"
                   onClick={addReward}
-                  className="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-sm font-bold"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-bold transition"
                 >
                   + Добавить место
                 </button>
@@ -207,15 +201,17 @@ export default function EditEventPage() {
               
               <div className="space-y-3">
                 {rewards.map((reward, index) => (
-                  <div key={index} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <div key={index} className="bg-gray-800/50 border border-purple-500/30 rounded-lg p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="text-yellow-400 font-bold text-lg">#{reward.place}</span>
-                      <span className="text-gray-400 text-sm">место</span>
+                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xl font-bold text-black">
+                        #{reward.place}
+                      </div>
+                      <span className="text-gray-300 font-medium">место</span>
                       {rewards.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeReward(index)}
-                          className="ml-auto text-red-400 hover:text-red-300 text-sm"
+                          className="ml-auto text-red-400 hover:text-red-300 text-sm font-medium"
                         >
                           Удалить
                         </button>
@@ -224,20 +220,15 @@ export default function EditEventPage() {
                     
                     <div className="grid md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-gray-500 mb-1">Название приза</label>
+                        <label className="block text-xs text-gray-500 mb-1">Название приза *</label>
                         <input
                           type="text"
                           value={reward.reward_name}
                           onChange={e => updateReward(index, 'reward_name', e.target.value)}
                           placeholder="Например: Легенда Подземелья"
-                          className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-sm"
-                          list={`rewards-${index}`}
+                          required
+                          className="w-full p-2 bg-gray-900 border border-gray-700 rounded-lg text-sm"
                         />
-                        <datalist id={`rewards-${index}`}>
-                          {POPULAR_REWARDS.map(r => (
-                            <option key={r} value={r} />
-                          ))}
-                        </datalist>
                       </div>
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">Описание (что даёт)</label>
@@ -246,7 +237,7 @@ export default function EditEventPage() {
                           value={reward.reward_description}
                           onChange={e => updateReward(index, 'reward_description', e.target.value)}
                           placeholder="Например: +500 кристаллов"
-                          className="w-full p-2 bg-gray-900 border border-gray-700 rounded text-sm"
+                          className="w-full p-2 bg-gray-900 border border-gray-700 rounded-lg text-sm"
                         />
                       </div>
                     </div>
@@ -258,9 +249,9 @@ export default function EditEventPage() {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-lg disabled:opacity-50"
+              className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition disabled:opacity-50 text-lg"
             >
-              {loading ? 'Сохранение...' : '💾 Сохранить изменения'}
+              {loading ? '💾 Сохранение...' : '💾 Сохранить изменения'}
             </button>
           </form>
         </div>
