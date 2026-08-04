@@ -31,6 +31,7 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
     .eq('event_id', id)
     .order('joined_at', { ascending: true })
 
+  // Получаем ники участников
   let usernames: Record<string, string> = {}
   if (participants && participants.length > 0) {
     const userIds = participants.map((p: any) => p.user_id)
@@ -45,12 +46,6 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
       })
     }
   }
-
-  const { data: winners } = await supabase
-    .from('event_winners')
-    .select('user_id, place')
-    .eq('event_rewards.event_id', id)
-    .order('place', { ascending: true })
 
   const participantsWithNames = participants?.map(p => ({
     ...p,
@@ -87,31 +82,13 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
 
             {rewards && rewards.length > 0 && (
               <div className="mt-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <h3 className="text-lg font-bold text-yellow-400 mb-2"> Призы:</h3>
+                <h3 className="text-lg font-bold text-yellow-400 mb-2">🏆 Призы:</h3>
                 <div className="space-y-1">
                   {rewards.map((r: any) => (
                     <p key={r.id} className="text-sm text-white">
                       <span className="text-yellow-400 font-bold">#{r.place}:</span> {r.reward_name}
                       {r.reward_description && <span className="text-gray-400"> ({r.reward_description})</span>}
                     </p>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {event.status === 'completed' && winners && winners.length > 0 && (
-              <div className="mt-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-2 border-green-500/30 rounded-lg p-4">
-                <h3 className="text-lg font-bold text-green-400 mb-3">🎉 Победители:</h3>
-                <div className="space-y-2">
-                  {winners.map((winner: any, index: number) => (
-                    <div key={winner.id} className="bg-black/40 border border-green-500/20 rounded-lg p-3 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-xl font-bold text-black">
-                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${winner.place}`}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-white font-bold">{usernames[winner.user_id] || 'Аноним'}</p>
-                      </div>
-                    </div>
                   ))}
                 </div>
               </div>
@@ -156,37 +133,24 @@ export default async function AdminEventPage({ params }: { params: Promise<{ id:
 
             {participantsWithNames.length > 0 ? (
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                {participantsWithNames.map((participant: any, index: number) => {
-                  const isWinner = winners?.some((w: any) => w.user_id === participant.user_id)
-                  
-                  return (
-                    <div 
-                      key={participant.id}
-                      className={`border rounded-lg p-3 flex items-center gap-3 ${
-                        isWinner 
-                          ? 'bg-green-500/10 border-green-500/50' 
-                          : 'bg-black/40 border-purple-500/20'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                        isWinner 
-                          ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-black' 
-                          : 'bg-purple-500/30 text-purple-300'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-semibold truncate">
-                          {participant.username}
-                          {isWinner && <span className="ml-2 text-xs text-green-400">🏆 Победитель</span>}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
-                        </p>
-                      </div>
+                {participantsWithNames.map((participant: any, index: number) => (
+                  <div 
+                    key={participant.id}
+                    className="bg-black/40 border border-purple-500/20 rounded-lg p-3 flex items-center gap-3"
+                  >
+                    <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300 flex-shrink-0">
+                      {index + 1}
                     </div>
-                  )
-                })}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold truncate">
+                        {participant.username}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-center py-12 text-gray-500 bg-black/20 rounded-xl border border-dashed border-gray-700">
