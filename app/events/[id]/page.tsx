@@ -9,7 +9,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const { id } = await params
   const supabase = await createClient()
 
-  // 1. Получаем событие
+  // Получаем событие
   const { data: event, error: eventError } = await supabase
     .from('events')
     .select('*')
@@ -20,44 +20,55 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     redirect('/')
   }
 
-  // 2. Получаем призы
+  // Получаем призы
   const { data: rewards } = await supabase
     .from('event_rewards')
     .select('*')
     .eq('event_id', id)
     .order('place', { ascending: true })
 
-  // 3. Получаем участников
-  const { data: participants, error: participantsError } = await supabase
+  // Получаем участников
+  const { data: participants } = await supabase
     .from('event_participants')
     .select('id, user_id, joined_at')
     .eq('event_id', id)
     .order('joined_at', { ascending: true })
 
-  if (participantsError) {
-    console.error('Ошибка загрузки участников:', participantsError)
-  }
+  // Получаем победителей (если розыгрыш проведён)
+  const { data: winners } = await supabase
+    .from('event_winners')
+    .select('*, event_rewards(reward_name, place)')
+    .eq('event_rewards.event_id', id)
+    .order('place', { ascending: true })
 
-  // 4. Получаем ники участников из таблицы profiles
+  // Получаем ники всех участников и победителей
   let usernames: Record<string, string> = {}
-  if (participants && participants.length > 0) {
-    const userIds = participants.map((p: any) => p.user_id)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, username')
-      .in('id', userIds)
-    
-    if (profiles) {
-      profiles.forEach((p: any) => {
-        usernames[p.id] = p.username || 'Аноним'
-      })
+  const allUserIds = [
+    ...(participants?.map((p: any) => p.user_id) || []),
+    ...(winners?.map((w: any) => w.user_id) || [])
+  ]
+  
+  if (allUserIds.length > 0) {
+    try {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', [...new Set(allUserIds)])
+      
+      if (profiles) {
+        profiles.forEach((p: any) => {
+          usernames[p.id] = p.username || 'Аноним'
+        })
+      }
+    } catch (error) {
+      console.error('Ошибка получения профилей:', error)
     }
   }
 
-  // 5. Получаем текущего пользователя
+  // Получаем текущего пользователя
   const { data: { user } } = await supabase.auth.getUser()
   
-  // 6. Проверяем, участвует ли уже
+  // Проверяем, участвует ли уже
   const isParticipant = participants?.some((p: any) => p.user_id === user?.id) || false
 
   return (
@@ -127,6 +138,38 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           </Link>
         )}
 
+        {/*  БЛОК РЕЗУЛЬТАТОВ РОЗЫГРЫША */}
+        {event.status === 'completed' && winners && winners.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+              🏆 Результаты розыгрыша
+            </h2>
+            <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-2 border-yellow-500/30 rounded-xl p-6">
+              <div className="space-y-3">
+                {winners.map((winner: any, index: number) => (
+                  <div key={winner.id} className="bg-black/40 border border-yellow-500/20 rounded-lg p-4 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-2xl font-bold text-black flex-shrink-0">
+                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${winner.place}`}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-bold text-lg">
+                        {usernames[winner.user_id] || 'Аноним'}
+                      </p>
+                      <p className="text-yellow-400 text-sm">
+                        {winner.event_rewards?.reward_name}
+                      </p>
+                    </div>
+                    <div className="text-3xl">
+                      {index === 0 ? '🏆' : '🎉'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Список участников */}
         <div className="mt-8">
           <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
             👥 Список участников ({participants?.length || 0})
@@ -135,16 +178,28 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           {participants && participants.length > 0 ? (
             <div className="space-y-2">
               {participants.map((participant: any, index: number) => {
-                // Берем ник из словаря, иначе 'Аноним', иначе обрезанный ID
                 const displayName = usernames[participant.user_id] || participant.user_id.slice(0, 8) + '...'
+                const isWinner = winners?.some((w: any) => w.user_id === participant.user_id)
                 
                 return (
-                  <div key={participant.id} className="bg-black/40 border border-purple-500/20 rounded-lg p-4 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-500/30 rounded-full flex items-center justify-center text-sm font-bold text-purple-300">
+                  <div 
+                    key={participant.id} 
+                    className={`border rounded-lg p-4 flex items-center gap-3 ${
+                      isWinner 
+                        ? 'bg-green-500/10 border-green-500/50' 
+                        : 'bg-black/40 border-purple-500/20'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                      isWinner 
+                        ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-black' 
+                        : 'bg-purple-500/30 text-purple-300'
+                    }`}>
                       {index + 1}
                     </div>
                     <span className="text-white font-semibold">
                       {displayName}
+                      {isWinner && <span className="ml-2 text-xs text-green-400">🏆 Победитель</span>}
                     </span>
                     <span className="text-xs text-gray-500 ml-auto">
                       {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
