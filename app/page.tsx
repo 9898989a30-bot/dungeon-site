@@ -93,9 +93,9 @@ export default async function HomePage() {
             <span className="text-4xl">🎯</span>
             Активные события
           </h3>
-          <span className="text-gray-400">
-            {events?.length || 0} {events?.length === 1 ? 'событие' : events?.length < 5 ? 'события' : 'событий'}
-          </span>
+<span className="text-gray-400">
+  {events?.length || 0} {events?.length === 1 ? 'событие' : events?.length < 5 ? 'события' : 'событий'}
+</span>
         </div>
 
         {events && events.length > 0 ? (
