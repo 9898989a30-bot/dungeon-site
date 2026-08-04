@@ -16,7 +16,7 @@ export async function POST(
       return NextResponse.json({ error: 'Не авторизован' }, { status: 401 })
     }
 
-    // Проверяем, что пользователь — админ
+    // Проверяем админа
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_admin')
@@ -24,7 +24,7 @@ export async function POST(
       .single()
 
     if (!profile?.is_admin) {
-      return NextResponse.json({ error: 'Нет прав администратора' }, { status: 403 })
+      return NextResponse.json({ error: 'Нет прав' }, { status: 403 })
     }
 
     // Получаем событие
@@ -38,7 +38,6 @@ export async function POST(
       return NextResponse.json({ error: 'Событие не найдено' }, { status: 404 })
     }
 
-    // Проверяем статус
     if (event.status === 'completed') {
       return NextResponse.json({ error: 'Розыгрыш уже проведён' }, { status: 400 })
     }
@@ -64,7 +63,7 @@ export async function POST(
       return NextResponse.json({ error: 'Нет призов' }, { status: 400 })
     }
 
-    // Перемешиваем участников случайным образом
+    // 🎲 РАНДОМНО перемешиваем участников
     const shuffled = [...participants].sort(() => Math.random() - 0.5)
 
     // Назначаем победителей по местам
@@ -79,13 +78,13 @@ export async function POST(
       })
     }
 
-    // Сохраняем результаты
+    // Сохраняем победителей
     const { error: insertError } = await supabase
       .from('event_winners')
       .insert(winners)
 
     if (insertError) {
-      console.error('Ошибка сохранения победителей:', insertError)
+      console.error('Ошибка сохранения:', insertError)
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
@@ -95,6 +94,7 @@ export async function POST(
       .update({ status: 'completed' })
       .eq('id', id)
 
+    revalidatePath(`/events/${id}`)
     revalidatePath(`/admin/events/${id}`)
     
     return NextResponse.json({ 
@@ -104,7 +104,7 @@ export async function POST(
     })
     
   } catch (error) {
-    console.error('Ошибка в API розыгрыша:', error)
-    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+    console.error('Ошибка в API:', error)
+    return NextResponse.json({ error: 'Внутренняя ошибка' }, { status: 500 })
   }
 }
