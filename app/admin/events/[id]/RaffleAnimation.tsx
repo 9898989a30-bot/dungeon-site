@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import { useParams } from 'next/navigation'
 
 interface Participant {
   id: string
@@ -13,6 +14,9 @@ interface RaffleAnimationProps {
 }
 
 export default function RaffleAnimation({ participants, onRaffleComplete }: RaffleAnimationProps) {
+  const params = useParams()
+  const eventId = params.id as string
+  
   const [currentIndex, setCurrentIndex] = useState(-1)
   const [phase, setPhase] = useState<'idle' | 'spinning' | 'slowing' | 'winner' | 'done'>('idle')
   const [winners, setWinners] = useState<string[]>([])
@@ -35,7 +39,7 @@ export default function RaffleAnimation({ participants, onRaffleComplete }: Raff
     setPhase('spinning')
     
     try {
-      const response = await fetch(`/api/admin/events/${participants[0]?.id ? '' : ''}raffle`, {
+      const response = await fetch(`/api/admin/events/${eventId}/raffle`, {
         method: 'POST',
       })
       
@@ -138,7 +142,7 @@ export default function RaffleAnimation({ participants, onRaffleComplete }: Raff
 
   const getMedal = (index: number) => {
     if (index === 0) return '🥇'
-    if (index === 1) return '🥈'
+    if (index === 1) return ''
     if (index === 2) return '🥉'
     return `#${index + 1}`
   }
@@ -201,7 +205,7 @@ export default function RaffleAnimation({ participants, onRaffleComplete }: Raff
                 </p>
                 {isWinner && (
                   <p className="text-xs text-yellow-400 font-bold">
-                    🏆 {getMedal(winnerPlace)} место!
+                     {getMedal(winnerPlace)} место!
                   </p>
                 )}
               </div>
@@ -219,13 +223,13 @@ export default function RaffleAnimation({ participants, onRaffleComplete }: Raff
           onClick={startRaffle}
           className="mt-4 w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-lg transition shadow-lg shadow-yellow-500/30 text-lg"
         >
-           Начать розыгрыш!
+          🎲 Начать розыгрыш!
         </button>
       )}
 
       {phase === 'done' && (
         <div className="mt-4 p-4 bg-green-500/20 border border-green-500/50 rounded-lg text-center">
-          <p className="text-green-400 font-bold text-lg"> Розыгрыш завершён!</p>
+          <p className="text-green-400 font-bold text-lg">🎉 Розыгрыш завершён!</p>
           <p className="text-gray-300 text-sm mt-1">Победители определены</p>
         </div>
       )}
