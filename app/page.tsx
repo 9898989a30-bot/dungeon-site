@@ -19,6 +19,8 @@ export default async function HomePage() {
     .eq('id', user.id)
     .single() : { data: null }
 
+  const eventsCount = events?.length || 0
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white relative overflow-hidden">
       {/* Анимированный фон */}
@@ -45,7 +47,7 @@ export default async function HomePage() {
             
             {profile?.is_admin && (
               <Link href="/admin" className="text-yellow-400 hover:text-yellow-300 transition font-medium flex items-center gap-1">
-                <span>👑</span> Админка
+                <span></span> Админка
               </Link>
             )}
             
@@ -67,7 +69,7 @@ export default async function HomePage() {
 
       {/* Герой секция */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 py-16 text-center">
-        <h2 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent animate-gradient">
+        <h2 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
           Добро пожаловать, герой!
         </h2>
         <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
@@ -81,7 +83,7 @@ export default async function HomePage() {
           </div>
         ) : (
           <Link href="/auth" className="inline-block px-8 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-black font-bold rounded-xl transition transform hover:scale-105 shadow-2xl shadow-orange-500/50 text-lg">
-            ️ Начать приключение
+            ⚔️ Начать приключение
           </Link>
         )}
       </section>
@@ -93,9 +95,13 @@ export default async function HomePage() {
             <span className="text-4xl">🎯</span>
             Активные события
           </h3>
-<span className="text-gray-400">
-  {events?.length || 0} {events?.length === 1 ? 'событие' : events?.length < 5 ? 'события' : 'событий'}
-</span>
+          <span className="text-gray-400">
+            {eventsCount} {
+              eventsCount === 0 ? 'событий' :
+              eventsCount === 1 ? 'событие' : 
+              eventsCount < 5 ? 'события' : 'событий'
+            }
+          </span>
         </div>
 
         {events && events.length > 0 ? (
@@ -119,7 +125,7 @@ export default async function HomePage() {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <span className="text-4xl">
-                          {event.type === 'tournament' ? '️' : '🎁'}
+                          {event.type === 'tournament' ? '⚔️' : '🎁'}
                         </span>
                         <div>
                           <h4 className="text-xl font-bold text-white group-hover:text-yellow-400 transition">
