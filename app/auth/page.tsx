@@ -1,132 +1,137 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function AuthPage() {
   const supabase = createClient()
   const router = useRouter()
+  
   const [isLogin, setIsLogin] = useState(true)
-  const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    // Плавное появление формы
-    const timer = setTimeout(() => setIsVisible(true), 100)
-    return () => clearTimeout(timer)
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError('')
     setLoading(true)
+    setError('')
 
-    if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      if (error) {
-        setError(error.message)
+    try {
+      if (isLogin) {
+        // Вход
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        })
+
+        if (signInError) {
+          console.error('Ошибка входа:', signInError)
+          setError('Неверный email или пароль')
+          setLoading(false)
+          return
+        }
+
+        // Убрали alert - просто переходим
+        router.push('/')
+        router.refresh()
+        
       } else {
+        // Регистрация
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password
+        })
+
+        if (signUpError) {
+          console.error('Ошибка регистрации:', signUpError)
+          setError(signUpError.message)
+          setLoading(false)
+          return
+        }
+
+        // Создаём профиль
+        if (authData.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user.id,
+              username: username || email.split('@')[0],
+              is_admin: false
+            })
+
+          if (profileError) {
+            console.error('Ошибка создания профиля:', profileError)
+          }
+        }
+
+        // Убрали alert - просто переходим на главную
         router.push('/')
         router.refresh()
       }
-    } else {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { username },
-        },
-      })
-      if (error) {
-        setError(error.message)
-      } else {
-        alert('✅ Регистрация успешна! Теперь войди.')
-        setIsLogin(true)
-      }
+      
+    } catch (error: any) {
+      console.error('Ошибка:', error)
+      setError('Произошла ошибка')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-950 to-black flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Фоновые эффекты */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-red-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      </div>
-
-      {/* Руны на фоне */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-10">
-        <div className="absolute top-20 left-10 text-8xl text-yellow-500/20 animate-spin" style={{ animationDuration: '30s' }}></div>
-        <div className="absolute top-40 right-20 text-7xl text-purple-500/20 animate-spin" style={{ animationDuration: '25s' }}></div>
-        <div className="absolute bottom-20 left-1/3 text-9xl text-red-500/20 animate-spin" style={{ animationDuration: '35s' }}></div>
-        <div className="absolute bottom-40 right-10 text-8xl text-emerald-500/20 animate-spin" style={{ animationDuration: '28s' }}>ᚨ</div>
-      </div>
-
-      {/* Форма с анимацией появления */}
-      <div 
-        className={`relative z-10 max-w-md w-full transition-all duration-1000 ease-out ${
-          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-        }`}
-      >
-        <div className="bg-black/40 backdrop-blur-xl border-2 border-purple-500/30 rounded-2xl p-8 shadow-2xl">
-          <div className="mb-6">
-            <h3 className="text-2xl md:text-3xl font-bold text-white mb-2 text-center">
-              ️ {isLogin ? 'Добро пожаловать!' : 'Создать аккаунт'}
-            </h3>
-            <p className="text-gray-400 text-center text-sm">
-              {isLogin ? 'Войди чтобы участвовать в турнирах' : 'Зарегистрируйся и стань героем'}
-            </p>
-          </div>
+    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <div className="bg-black/50 border border-purple-500/30 rounded-2xl p-8">
+          <h1 className="text-3xl font-bold text-center mb-2 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+            {isLogin ? 'Вход' : 'Регистрация'}
+          </h1>
+          <p className="text-center text-gray-400 mb-8">
+            {isLogin ? 'С возвращением, герой!' : 'Создай аккаунт для участия'}
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Никнейм</label>
+                <label className="block text-sm text-gray-400 mb-1">Имя пользователя</label>
                 <input
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  required
-                  className="w-full p-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white focus:border-yellow-400 focus:outline-none transition"
-                  placeholder="Твой игровой ник"
+                  placeholder="Придумай никнейм"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Email</label>
+              <label className="block text-sm text-gray-400 mb-1">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                required
-                className="w-full p-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white focus:border-yellow-400 focus:outline-none transition"
                 placeholder="your@email.com"
+                required
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Пароль</label>
+              <label className="block text-sm text-gray-400 mb-1">Пароль</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                required
-                className="w-full p-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white focus:border-yellow-400 focus:outline-none transition"
                 placeholder="••••••••"
+                required
+                className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none"
               />
             </div>
 
             {error && (
-              <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-red-300 text-sm">
+              <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -134,31 +139,31 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-purple-600 to-red-600 hover:from-purple-500 hover:to-red-500 text-white font-bold rounded-lg transition disabled:opacity-50 shadow-lg shadow-purple-500/30"
+              className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-lg transition disabled:opacity-50 shadow-lg shadow-purple-500/30"
             >
-              {loading ? 'Загрузка...' : isLogin ? '⚔️ Войти' : ' Зарегистрироваться'}
+              {loading ? '⏳ Обработка...' : (isLogin ? '🔐 Войти' : '✨ Зарегистрироваться')}
             </button>
           </form>
 
-          <div className="mt-4 text-center">
+          <div className="mt-6 text-center">
             <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-purple-400 hover:text-yellow-400 transition text-sm"
+              onClick={() => {
+                setIsLogin(!isLogin)
+                setError('')
+              }}
+              className="text-purple-400 hover:text-purple-300 text-sm"
             >
               {isLogin ? 'Нет аккаунта? Зарегистрируйся' : 'Уже есть аккаунт? Войди'}
             </button>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-gray-700 text-center">
-            <button
-              onClick={() => router.push('/')}
-              className="text-gray-500 hover:text-gray-300 transition text-sm"
-            >
+          <div className="mt-8 pt-6 border-t border-purple-500/20 text-center">
+            <Link href="/" className="text-gray-400 hover:text-gray-300 text-sm">
               ← Вернуться на главную
-            </button>
+            </Link>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
