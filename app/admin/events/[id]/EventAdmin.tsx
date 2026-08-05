@@ -57,7 +57,6 @@ export default function EventAdmin() {
         .eq('event_id', eventId)
         .order('joined_at', { ascending: true })
 
-      // Получаем ники
       let usernames: Record<string, string> = {}
       if (participantsData && participantsData.length > 0) {
         const userIds = participantsData.map(p => p.user_id)
@@ -137,7 +136,6 @@ export default function EventAdmin() {
     setPhase('spinning')
     setCurrentPlace(place)
 
-    // Фаза 1: Быстрое мелькание (2 секунды)
     let speed = 50
     let elapsed = 0
     const fastDuration = 2000
@@ -155,7 +153,6 @@ export default function EventAdmin() {
       }, speed)
     })
 
-    // Фаза 2: Замедление
     setPhase('slowing')
     await new Promise<void>((resolve) => {
       let slowSpeed = 100
@@ -174,7 +171,6 @@ export default function EventAdmin() {
       runSlow()
     })
 
-    // Фаза 3: Финальное замедление к победителю
     await new Promise<void>((resolve) => {
       let finalSpeed = 400
       let steps = 0
@@ -195,12 +191,10 @@ export default function EventAdmin() {
       runFinal()
     })
 
-    // Фаза 4: Показываем победителя
     setCurrentIndex(winnerIndex)
     setPhase('winner')
     setWinners(prev => [...prev, winnerId])
 
-    // Ждём 2 секунды и переходим к следующему месту
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     await animateForPlace(winnerIds, place + 1)
@@ -209,7 +203,7 @@ export default function EventAdmin() {
   const getMedal = (index: number) => {
     if (index === 0) return '🥇'
     if (index === 1) return '🥈'
-    if (index === 2) return '🥉'
+    if (index === 2) return ''
     return `#${index + 1}`
   }
 
@@ -262,15 +256,23 @@ export default function EventAdmin() {
               </p>
             </div>
 
+            {/* Красивые карточки призов */}
             {rewards.length > 0 && (
-              <div className="mt-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <h3 className="text-lg font-bold text-yellow-400 mb-2"> Призы:</h3>
-                <div className="space-y-1">
-                  {rewards.map((r) => (
-                    <p key={r.id} className="text-sm text-white">
-                      <span className="text-yellow-400 font-bold">#{r.place}:</span> {r.reward_name}
-                      {r.reward_description && <span className="text-gray-400"> ({r.reward_description})</span>}
-                    </p>
+              <div className="mt-4 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-2 border-yellow-500/30 rounded-xl p-6">
+                <h3 className="text-2xl font-bold text-yellow-400 mb-4 flex items-center gap-2">🏆 Призы</h3>
+                <div className="space-y-3">
+                  {rewards.map((reward) => (
+                    <div key={reward.id} className="bg-black/40 border border-yellow-500/20 rounded-lg p-4 flex items-center gap-4">
+                      <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-2xl font-bold text-black">
+                        #{reward.place}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-lg font-bold text-white mb-1">{reward.reward_name}</h4>
+                        {reward.reward_description && (
+                          <p className="text-gray-400 text-sm">{reward.reward_description}</p>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -359,7 +361,7 @@ export default function EventAdmin() {
                       </p>
                       {isWinner && (
                         <p className="text-xs text-yellow-400 font-bold">
-                           {getMedal(winnerPlace)} место!
+                          🏆 {getMedal(winnerPlace)} место!
                         </p>
                       )}
                       {!isWinner && (
