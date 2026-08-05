@@ -1,7 +1,7 @@
 'use client'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface Reward {
@@ -11,8 +11,9 @@ interface Reward {
   reward_description: string
 }
 
-export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
-  const [eventId, setEventId] = useState<string>('')
+export default function EditEventPage() {
+  const params = useParams()
+  const eventId = params.id as string
   const supabase = createClient()
   const router = useRouter()
 
@@ -27,17 +28,14 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   ])
 
   useEffect(() => {
-    params.then(p => {
-      setEventId(p.id)
-      loadEvent(p.id)
-    })
-  }, [params])
+    loadEvent()
+  }, [eventId])
 
-  async function loadEvent(id: string) {
+  async function loadEvent() {
     const { data: event } = await supabase
       .from('events')
       .select('*')
-      .eq('id', id)
+      .eq('id', eventId)
       .single()
 
     if (event) {
@@ -50,7 +48,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
       const { data: rewardsData } = await supabase
         .from('event_rewards')
         .select('*')
-        .eq('event_id', id)
+        .eq('event_id', eventId)
         .order('place', { ascending: true })
 
       if (rewardsData && rewardsData.length > 0) {
@@ -66,10 +64,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
   }
 
   function removeReward(index: number) {
-    if (rewards.length <= 1) {
-      alert('Должно быть хотя бы одно призовое место')
-      return
-    }
+    if (rewards.length <= 1) return
     const newRewards = rewards.filter((_, i) => i !== index)
     setRewards(newRewards.map((r, i) => ({ ...r, place: i + 1 })))
   }
@@ -84,40 +79,45 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
     e.preventDefault()
     setLoading(true)
 
-    const { error: eventError } = await supabase
-      .from('events')
-      .update({
-        type,
-        title,
-        description,
-        start_date: startDate || null,
-        max_participants: maxParticipants ? parseInt(maxParticipants) : null,
-      })
-      .eq('id', eventId)
+    try {
+      const { error: eventError } = await supabase
+        .from('events')
+        .update({
+          type,
+          title,
+          description,
+          start_date: startDate || null,
+          max_participants: maxParticipants ? parseInt(maxParticipants) : null,
+        })
+        .eq('id', eventId)
 
-    if (eventError) {
-      alert('Ошибка обновления: ' + eventError.message)
+      if (eventError) {
+        console.error('Ошибка обновления:', eventError)
+        setLoading(false)
+        return
+      }
+
+      await supabase.from('event_rewards').delete().eq('event_id', eventId)
+
+      const validRewards = rewards.filter(r => r.reward_name.trim() !== '')
+      if (validRewards.length > 0) {
+        await supabase.from('event_rewards').insert(
+          validRewards.map(r => ({
+            event_id: eventId,
+            place: r.place,
+            reward_name: r.reward_name,
+            reward_description: r.reward_description
+          }))
+        )
+      }
+
+      router.push(`/admin/events/${eventId}`)
+      
+    } catch (error) {
+      console.error('Ошибка:', error)
+    } finally {
       setLoading(false)
-      return
     }
-
-    await supabase.from('event_rewards').delete().eq('event_id', eventId)
-
-    const validRewards = rewards.filter(r => r.reward_name.trim() !== '')
-    if (validRewards.length > 0) {
-      await supabase.from('event_rewards').insert(
-        validRewards.map(r => ({
-          event_id: eventId,
-          place: r.place,
-          reward_name: r.reward_name,
-          reward_description: r.reward_description
-        }))
-      )
-    }
-
-    alert('✅ Событие обновлено!')
-    router.push(`/admin/events/${eventId}`)
-    setLoading(false)
   }
 
   return (
@@ -189,7 +189,7 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
             {/* Призовые места */}
             <div>
               <div className="flex justify-between items-center mb-4">
-                <label className="block text-lg font-bold text-yellow-400">🏆 Призовые места</label>
+                <label className="block text-lg font-bold text-yellow-400"> Призовые места</label>
                 <button 
                   type="button"
                   onClick={addReward}

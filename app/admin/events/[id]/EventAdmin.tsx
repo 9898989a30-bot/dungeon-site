@@ -87,8 +87,7 @@ export default function EventAdmin() {
 
   async function startRaffle() {
     if (participants.length === 0) return
-    if (!confirm('⚠️ Провести розыгрыш среди участников?')) return
-
+    
     setRaffling(true)
     setPhase('spinning')
     setWinners([])
@@ -102,7 +101,7 @@ export default function EventAdmin() {
       const data = await response.json()
 
       if (!response.ok) {
-        alert('Ошибка: ' + (data.error || 'Не удалось провести розыгрыш'))
+        console.error('Ошибка розыгрыша:', data.error)
         setPhase('idle')
         setRaffling(false)
         return
@@ -113,9 +112,9 @@ export default function EventAdmin() {
 
     } catch (error) {
       console.error('Ошибка розыгрыша:', error)
-      alert('Произошла ошибка')
       setPhase('idle')
       setRaffling(false)
+      return
     }
   }
 
@@ -203,7 +202,7 @@ export default function EventAdmin() {
   const getMedal = (index: number) => {
     if (index === 0) return '🥇'
     if (index === 1) return '🥈'
-    if (index === 2) return ''
+    if (index === 2) return '🥉'
     return `#${index + 1}`
   }
 
@@ -231,7 +230,7 @@ export default function EventAdmin() {
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-yellow-400">👑 Админка события</h1>
+          <h1 className="text-3xl font-bold text-yellow-400"> Админка события</h1>
           <Link href="/admin" className="text-yellow-400 hover:text-yellow-300">← Назад в админку</Link>
         </div>
 
