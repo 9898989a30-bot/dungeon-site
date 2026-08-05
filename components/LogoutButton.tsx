@@ -8,8 +8,8 @@ export default function LogoutButton() {
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    router.refresh()
-    router.push('/')
+    // Принудительная перезагрузка страницы
+    window.location.href = '/'
   }
 
   return (
