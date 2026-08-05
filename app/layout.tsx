@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import './globals.css'
-
+import LogoutButton from '@/components/LogoutButton'
 export const metadata: Metadata = {
   title: 'Крушители Подземелья',
   description: 'Участвуй в турнирах и розыгрышах',
@@ -49,9 +49,7 @@ export default async function RootLayout({
               {user ? (
                 <div className="flex items-center gap-3">
                   <span className="text-gray-300">👤 {profile?.username || 'Пользователь'}</span>
-                  <Link href="/api/auth/logout" className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg transition font-medium">
-                    Выйти
-                  </Link>
+<LogoutButton />
                 </div>
               ) : (
                 <Link href="/auth" className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg transition font-bold shadow-lg shadow-purple-500/30">
