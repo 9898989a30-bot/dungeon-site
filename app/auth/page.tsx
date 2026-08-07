@@ -39,7 +39,17 @@ export default function AuthPage() {
         router.refresh()
         
       } else {
-        // Регистрация
+        // РЕГИСТРАЦИЯ
+        const trimmedUsername = username.trim()
+        
+        // Проверка: если ник пустой
+        if (!trimmedUsername) {
+          setError('Пожалуйста, введите имя пользователя')
+          setLoading(false)
+          return
+        }
+
+        // Создаем аккаунт в Authentication
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password
@@ -52,34 +62,36 @@ export default function AuthPage() {
           return
         }
 
-        // Создаём профиль
+        // Создаём профиль с ПРАВИЛЬНЫМ ником
         if (authData.user) {
-          // ✅ ЗАЩИТА: обрезаем пробелы. Если поле пустое, генерируем имя вида User_a1b2c3
-          const finalUsername = username.trim() || `User_${authData.user.id.slice(0, 6)}`
-
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
               id: authData.user.id,
-              username: finalUsername,
+              username: trimmedUsername, // ← ТОЛЬКО то что ввел пользователь
               is_admin: false
             })
 
           if (profileError) {
             console.error('Ошибка создания профиля:', profileError)
-            setError('Не удалось создать профиль')
+            
+            // Если ошибка - удаляем созданного пользователя из auth
+            await supabase.auth.admin.deleteUser(authData.user.id)
+            
+            setError('Не удалось создать профиль: ' + profileError.message)
             setLoading(false)
             return
           }
         }
 
+        // Успех - переходим на главную
         router.push('/')
         router.refresh()
       }
       
     } catch (error: any) {
       console.error('Ошибка:', error)
-      setError('Произошла ошибка')
+      setError('Произошла ошибка: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -99,15 +111,22 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Имя пользователя *</label>
+                <label className="block text-sm text-gray-400 mb-1">
+                  Имя пользователя <span className="text-red-400">*</span>
+                </label>
                 <input
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   placeholder="Придумай никнейм"
-                  required // ✅ СДЕЛАЛИ ПОЛЕ ОБЯЗАТЕЛЬНЫМ
+                  required
+                  minLength={3}
+                  maxLength={20}
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Минимум 3 символа, максимум 20
+                </p>
               </div>
             )}
 
@@ -131,6 +150,7 @@ export default function AuthPage() {
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                minLength={6}
                 className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none"
               />
             </div>
@@ -146,7 +166,7 @@ export default function AuthPage() {
               disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-lg transition disabled:opacity-50 shadow-lg shadow-purple-500/30"
             >
-              {loading ? '⏳ Обработка...' : (isLogin ? '🔐 Войти' : '✨ Зарегистрироваться')}
+              {loading ? ' Обработка...' : (isLogin ? '🔐 Войти' : '✨ Зарегистрироваться')}
             </button>
           </form>
 
@@ -155,6 +175,7 @@ export default function AuthPage() {
               onClick={() => {
                 setIsLogin(!isLogin)
                 setError('')
+                setUsername('')
               }}
               className="text-purple-400 hover:text-purple-300 text-sm"
             >
