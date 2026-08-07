@@ -59,8 +59,8 @@ if (authData.user) {
     .from('profiles')
     .insert({
       id: authData.user.id,
-      username: username || email.split('@')[0],  // ✅ НИК игрока
-      game_nickname: null,  // или можно тоже username
+      username: username.trim() || email.split('@')[0],  // ← НИК игрока
+      game_nickname: username.trim() || null,
       is_admin: false
     })
 
