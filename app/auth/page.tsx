@@ -22,7 +22,6 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        // Вход
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password
@@ -39,17 +38,14 @@ export default function AuthPage() {
         router.refresh()
         
       } else {
-        // РЕГИСТРАЦИЯ
         const trimmedUsername = username.trim()
         
-        // Проверка: если ник пустой
         if (!trimmedUsername) {
           setError('Пожалуйста, введите имя пользователя')
           setLoading(false)
           return
         }
 
-        // Создаем аккаунт в Authentication
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password
@@ -62,29 +58,26 @@ export default function AuthPage() {
           return
         }
 
-        // Создаём профиль с ПРАВИЛЬНЫМ ником
         if (authData.user) {
+          // ✅ ИСПРАВЛЕНИЕ: используем upsert вместо insert
           const { error: profileError } = await supabase
             .from('profiles')
-            .insert({
+            .upsert({
               id: authData.user.id,
-              username: trimmedUsername, // ← ТОЛЬКО то что ввел пользователь
+              username: trimmedUsername,
               is_admin: false
+            }, {
+              onConflict: 'id'
             })
 
           if (profileError) {
             console.error('Ошибка создания профиля:', profileError)
-            
-            // Если ошибка - удаляем созданного пользователя из auth
-            await supabase.auth.admin.deleteUser(authData.user.id)
-            
             setError('Не удалось создать профиль: ' + profileError.message)
             setLoading(false)
             return
           }
         }
 
-        // Успех - переходим на главную
         router.push('/')
         router.refresh()
       }
@@ -166,7 +159,7 @@ export default function AuthPage() {
               disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-lg transition disabled:opacity-50 shadow-lg shadow-purple-500/30"
             >
-              {loading ? ' Обработка...' : (isLogin ? '🔐 Войти' : '✨ Зарегистрироваться')}
+              {loading ? '⏳ Обработка...' : (isLogin ? '🔐 Войти' : '✨ Зарегистрироваться')}
             </button>
           </form>
 
