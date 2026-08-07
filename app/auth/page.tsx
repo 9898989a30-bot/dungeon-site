@@ -35,7 +35,6 @@ export default function AuthPage() {
           return
         }
 
-        // Убрали alert - просто переходим
         router.push('/')
         router.refresh()
         
@@ -55,20 +54,25 @@ export default function AuthPage() {
 
         // Создаём профиль
         if (authData.user) {
+          // ✅ ЗАЩИТА: обрезаем пробелы. Если поле пустое, генерируем имя вида User_a1b2c3
+          const finalUsername = username.trim() || `User_${authData.user.id.slice(0, 6)}`
+
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
               id: authData.user.id,
-              username: username || email.split('@')[0],
+              username: finalUsername,
               is_admin: false
             })
 
           if (profileError) {
             console.error('Ошибка создания профиля:', profileError)
+            setError('Не удалось создать профиль')
+            setLoading(false)
+            return
           }
         }
 
-        // Убрали alert - просто переходим на главную
         router.push('/')
         router.refresh()
       }
@@ -95,12 +99,13 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Имя пользователя</label>
+                <label className="block text-sm text-gray-400 mb-1">Имя пользователя *</label>
                 <input
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   placeholder="Придумай никнейм"
+                  required // ✅ СДЕЛАЛИ ПОЛЕ ОБЯЗАТЕЛЬНЫМ
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none"
                 />
               </div>
