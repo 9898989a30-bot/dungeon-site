@@ -23,13 +23,19 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     .eq('event_id', id)
     .order('place', { ascending: true })
 
+  // ✅ ИСПРАВЛЕНИЕ: Используем JOIN для получения username напрямую из profiles
   const { data: participants } = await supabase
     .from('event_participants')
-    .select('id, user_id, joined_at')
+    .select(`
+      id,
+      user_id,
+      joined_at,
+      profiles:user_id (username)
+    `)
     .eq('event_id', id)
     .order('joined_at', { ascending: true })
 
-  // Получаем победителей (если розыгрыш проведён)
+  // Получаем победителей
   const { data: winners } = await supabase
     .from('event_winners')
     .select(`
@@ -45,22 +51,18 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     .eq('event_rewards.event_id', id)
     .order('place', { ascending: true })
 
-  // Получаем ники всех
-  let usernames: Record<string, string> = {}
-  const allUserIds = [
-    ...(participants?.map((p: any) => p.user_id) || []),
-    ...(winners?.map((w: any) => w.user_id) || [])
-  ]
-  
-  if (allUserIds.length > 0) {
+  // Получаем ники только для победителей (для участников уже сделали JOIN выше)
+  let winnerUsernames: Record<string, string> = {}
+  if (winners && winners.length > 0) {
+    const winnerIds = winners.map((w: any) => w.user_id)
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, username')
-      .in('id', [...new Set(allUserIds)])
+      .in('id', winnerIds)
     
     if (profiles) {
       profiles.forEach((p: any) => {
-        usernames[p.id] = p.username || 'Аноним'
+        winnerUsernames[p.id] = p.username || 'Аноним'
       })
     }
   }
@@ -77,7 +79,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
         <div className="bg-black/50 border border-purple-500/30 rounded-xl p-8 mb-6">
           <div className="flex items-start gap-4 mb-6">
-            <span className="text-5xl">{event.type === 'tournament' ? '⚔️' : ''}</span>
+            <span className="text-5xl">{event.type === 'tournament' ? '⚔️' : '🎁'}</span>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-white mb-2">{event.title}</h1>
               <p className="text-gray-400 text-lg">{event.description}</p>
@@ -135,7 +137,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           </Link>
         )}
 
-        {/* 🎉 РЕЗУЛЬТАТЫ РОЗЫГРЫША - видны всем */}
+        {/* 🎉 РЕЗУЛЬТАТЫ РОЗЫГРЫША */}
         {event.status === 'completed' && winners && winners.length > 0 && (
           <div className="mt-8">
             <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
@@ -145,7 +147,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
               <div className="space-y-4">
                 {winners.map((winner: any, index: number) => {
                   const rewardName = (winner.event_rewards as any)?.reward_name || `Приз #${winner.place}`
-                  const displayName = usernames[winner.user_id] || 'Аноним'
+                  const displayName = winnerUsernames[winner.user_id] || 'Аноним'
                   
                   return (
                     <div 
@@ -183,7 +185,8 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           {participants && participants.length > 0 ? (
             <div className="space-y-2">
               {participants.map((participant: any, index: number) => {
-                const displayName = usernames[participant.user_id] || participant.user_id.slice(0, 8) + '...'
+                // ✅ ИСПРАВЛЕНИЕ: Берем ник напрямую из JOIN-запроса
+                const displayName = participant.profiles?.username || 'Аноним'
                 const isWinner = winners?.some((w: any) => w.user_id === participant.user_id)
                 
                 return (
