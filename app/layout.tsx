@@ -46,12 +46,15 @@ export default async function RootLayout({
                 </Link>
               )}
               
-              {user ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-300">👤 {profile?.username || 'Пользователь'}</span>
-<LogoutButton />
-                </div>
-              ) : (
+{user ? (
+  <div className="flex items-center gap-3">
+    <Link href="/profile" className="text-gray-300 hover:text-yellow-400 transition flex items-center gap-2">
+      <span>👤</span>
+      <span>{profile?.username || 'Пользователь'}</span>
+    </Link>
+    <LogoutButton />
+  </div>
+) : (
                 <Link href="/auth" className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg transition font-bold shadow-lg shadow-purple-500/30">
                   Войти
                 </Link>
