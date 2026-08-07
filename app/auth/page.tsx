@@ -22,6 +22,7 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
+        // Вход
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password
@@ -34,72 +35,47 @@ export default function AuthPage() {
           return
         }
 
+        // Убрали alert - просто переходим
         router.push('/')
         router.refresh()
         
       } else {
-        const trimmedUsername = username.trim()
-        
-        if (!trimmedUsername) {
-          setError('Пожалуйста, введите имя пользователя')
-          setLoading(false)
-          return
-        }
-
-        // Сначала проверяем, существует ли пользователь с таким email
-        const { data: existingUsers } = await supabase
-          .from('profiles')
-          .select('id')
-          .limit(1)
-
-        // Пробуем зарегистрировать
+        // Регистрация
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password
         })
 
         if (signUpError) {
-          // Если пользователь уже существует в Auth
-          if (signUpError.message.includes('already registered')) {
-            setError('Пользователь с таким email уже зарегистрирован. Войдите в аккаунт.')
-          } else {
-            console.error('Ошибка регистрации:', signUpError)
-            setError(signUpError.message)
-          }
+          console.error('Ошибка регистрации:', signUpError)
+          setError(signUpError.message)
           setLoading(false)
           return
         }
 
+        // Создаём профиль
         if (authData.user) {
-          // ✅ ИСПРАВЛЕНИЕ: используем upsert - если профиль есть, обновим; если нет - создадим
           const { error: profileError } = await supabase
             .from('profiles')
-            .upsert(
-              {
-                id: authData.user.id,
-                username: trimmedUsername,
-                is_admin: false
-              },
-              {
-                onConflict: 'id'
-              }
-            )
+            .insert({
+              id: authData.user.id,
+              username: username || email.split('@')[0],
+              is_admin: false
+            })
 
           if (profileError) {
             console.error('Ошибка создания профиля:', profileError)
-            setError('Не удалось создать профиль: ' + profileError.message)
-            setLoading(false)
-            return
           }
         }
 
+        // Убрали alert - просто переходим на главную
         router.push('/')
         router.refresh()
       }
       
     } catch (error: any) {
       console.error('Ошибка:', error)
-      setError('Произошла ошибка: ' + error.message)
+      setError('Произошла ошибка')
     } finally {
       setLoading(false)
     }
@@ -119,22 +95,14 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div>
-                <label className="block text-sm text-gray-400 mb-1">
-                  Имя пользователя <span className="text-red-400">*</span>
-                </label>
+                <label className="block text-sm text-gray-400 mb-1">Имя пользователя</label>
                 <input
                   type="text"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   placeholder="Придумай никнейм"
-                  required
-                  minLength={3}
-                  maxLength={20}
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Минимум 3 символа, максимум 20
-                </p>
               </div>
             )}
 
@@ -158,7 +126,6 @@ export default function AuthPage() {
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                minLength={6}
                 className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none"
               />
             </div>
@@ -183,7 +150,6 @@ export default function AuthPage() {
               onClick={() => {
                 setIsLogin(!isLogin)
                 setError('')
-                setUsername('')
               }}
               className="text-purple-400 hover:text-purple-300 text-sm"
             >
