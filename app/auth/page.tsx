@@ -46,29 +46,44 @@ export default function AuthPage() {
           return
         }
 
+        // Сначала проверяем, существует ли пользователь с таким email
+        const { data: existingUsers } = await supabase
+          .from('profiles')
+          .select('id')
+          .limit(1)
+
+        // Пробуем зарегистрировать
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password
         })
 
         if (signUpError) {
-          console.error('Ошибка регистрации:', signUpError)
-          setError(signUpError.message)
+          // Если пользователь уже существует в Auth
+          if (signUpError.message.includes('already registered')) {
+            setError('Пользователь с таким email уже зарегистрирован. Войдите в аккаунт.')
+          } else {
+            console.error('Ошибка регистрации:', signUpError)
+            setError(signUpError.message)
+          }
           setLoading(false)
           return
         }
 
         if (authData.user) {
-          // ✅ ИСПРАВЛЕНИЕ: используем upsert вместо insert
+          // ✅ ИСПРАВЛЕНИЕ: используем upsert - если профиль есть, обновим; если нет - создадим
           const { error: profileError } = await supabase
             .from('profiles')
-            .upsert({
-              id: authData.user.id,
-              username: trimmedUsername,
-              is_admin: false
-            }, {
-              onConflict: 'id'
-            })
+            .upsert(
+              {
+                id: authData.user.id,
+                username: trimmedUsername,
+                is_admin: false
+              },
+              {
+                onConflict: 'id'
+              }
+            )
 
           if (profileError) {
             console.error('Ошибка создания профиля:', profileError)
