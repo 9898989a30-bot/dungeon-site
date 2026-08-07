@@ -23,14 +23,13 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
     .eq('event_id', id)
     .order('place', { ascending: true })
 
-  // 1. Получаем участников БЕЗ JOIN (просто user_id)
   const { data: participants } = await supabase
     .from('event_participants')
     .select('id, user_id, joined_at')
     .eq('event_id', id)
     .order('joined_at', { ascending: true })
 
-  // 2. Получаем победителей
+  // Получаем победителей (если розыгрыш проведён)
   const { data: winners } = await supabase
     .from('event_winners')
     .select(`
@@ -38,37 +37,32 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
       user_id,
       place,
       won_at,
-      reward_id
+      event_rewards:reward_id (
+        reward_name,
+        place
+      )
     `)
-    .eq('event_id', id) // Исправлено: фильтруем по event_id напрямую
+    .eq('event_rewards.event_id', id)
+    .order('place', { ascending: true })
 
-  // 3. Собираем ВСЕ уникальные user_id (и участников, и победителей)
-  const participantIds = participants?.map((p: any) => p.user_id) || []
-  const winnerIds = winners?.map((w: any) => w.user_id) || []
-  const allUserIds = [...new Set([...participantIds, ...winnerIds])]
-
-  // 4. ОДНИМ запросом получаем ники для всех этих ID из таблицы profiles
+  // Получаем ники всех
   let usernames: Record<string, string> = {}
+  const allUserIds = [
+    ...(participants?.map((p: any) => p.user_id) || []),
+    ...(winners?.map((w: any) => w.user_id) || [])
+  ]
+  
   if (allUserIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, username')
-      .in('id', allUserIds)
+      .in('id', [...new Set(allUserIds)])
     
     if (profiles) {
       profiles.forEach((p: any) => {
-        // Берем именно username. Если он пустой, будет 'Аноним'
-        usernames[p.id] = p.username?.trim() || 'Аноним'
+        usernames[p.id] = p.username || 'Аноним'
       })
     }
-  }
-
-  // 5. Получаем имена призов для победителей (отдельно, чтобы не ломать основной запрос)
-  let rewardNames: Record<string, string> = {}
-  if (winners && winners.length > 0 && rewards) {
-    rewards.forEach((r: any) => {
-      rewardNames[r.id] = r.reward_name
-    })
   }
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -83,7 +77,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
         <div className="bg-black/50 border border-purple-500/30 rounded-xl p-8 mb-6">
           <div className="flex items-start gap-4 mb-6">
-            <span className="text-5xl">{event.type === 'tournament' ? '⚔️' : '🎁'}</span>
+            <span className="text-5xl">{event.type === 'tournament' ? '⚔️' : ''}</span>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-white mb-2">{event.title}</h1>
               <p className="text-gray-400 text-lg">{event.description}</p>
@@ -141,7 +135,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           </Link>
         )}
 
-        {/* 🎉 РЕЗУЛЬТАТЫ РОЗЫГРЫША */}
+        {/* 🎉 РЕЗУЛЬТАТЫ РОЗЫГРЫША - видны всем */}
         {event.status === 'completed' && winners && winners.length > 0 && (
           <div className="mt-8">
             <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
@@ -150,7 +144,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
             <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border-2 border-yellow-500/30 rounded-xl p-6 shadow-2xl shadow-yellow-500/20">
               <div className="space-y-4">
                 {winners.map((winner: any, index: number) => {
-                  const rewardName = rewardNames[winner.reward_id] || `Приз #${winner.place}`
+                  const rewardName = (winner.event_rewards as any)?.reward_name || `Приз #${winner.place}`
                   const displayName = usernames[winner.user_id] || 'Аноним'
                   
                   return (
@@ -189,8 +183,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
           {participants && participants.length > 0 ? (
             <div className="space-y-2">
               {participants.map((participant: any, index: number) => {
-                // ✅ ГАРАНТИРОВАННО берем из словаря usernames, который мы заполнили выше
-                const displayName = usernames[participant.user_id] || 'Аноним'
+                const displayName = usernames[participant.user_id] || participant.user_id.slice(0, 8) + '...'
                 const isWinner = winners?.some((w: any) => w.user_id === participant.user_id)
                 
                 return (
@@ -215,7 +208,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
                     </span>
                     <span className="text-xs text-gray-500">
                       {new Date(participant.joined_at).toLocaleDateString('ru-RU')}
-                    </span
+                    </span>
                   </div>
                 )
               })}
