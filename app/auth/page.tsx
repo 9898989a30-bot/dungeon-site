@@ -53,20 +53,21 @@ export default function AuthPage() {
           return
         }
 
-        // Создаём профиль
-        if (authData.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: authData.user.id,
-              username: username || email.split('@')[0],
-              is_admin: false
-            })
+// Создаём профиль
+if (authData.user) {
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .insert({
+      id: authData.user.id,
+      username: username || email.split('@')[0],  // ✅ НИК игрока
+      game_nickname: null,  // или можно тоже username
+      is_admin: false
+    })
 
-          if (profileError) {
-            console.error('Ошибка создания профиля:', profileError)
-          }
-        }
+  if (profileError) {
+    console.error('Ошибка создания профиля:', profileError)
+  }
+}
 
         // Убрали alert - просто переходим на главную
         router.push('/')
